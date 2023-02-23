@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://getbootstrap.com/docs/5.3/assets/css/docs.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script src="/js/utils.js" type="module"></script>
+    <title>Index</title>
+    <style>
+        .xxsmall-text {
+            font-size: xx-small;
+        }
+
+        .small-text
+        {
+            font-size: small;
+        }
+    </style>
+</head>
+
+<body class="p-0 m-0 border-0">
+
+    <div class="container mt-2 mb-2">
+        <div class="input-group">
+            <input id="search_bar" class="form-control" type="search" placeholder="Search" aria-label="Search">
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="search-results-container" class="container-fluid">
+        </div>
+    </div>
+
+    <template id="search_result">
+        <div class="card w-100 mb-2 shadow">
+            <div class="card-body">
+                <h7 class="card-title"><img id="favicon" class="mx-2" width=16 height="16" src=""><a id="title_link" href="/">Card title</a></h7>
+                <div class="container-flex">
+                    <p id="url_parts" class="xxsmall-text font-monospace text-truncate"></p>
+                    <p class="small-text card-text text-truncate"></p>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <script src="/js/search.js" type="module"></script>
+</body>
+
+</html>

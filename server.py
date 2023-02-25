@@ -227,7 +227,7 @@ async def run_server(args) -> None:
 
         server = AsyncHttpServer(args.addr, args.port, verbose=args.verbose)
 
-        if(True == args.cache_disabled):
+        if(True == args.disable_cache):
             server.disable_caching()
 
         api_list = [

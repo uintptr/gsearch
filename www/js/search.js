@@ -36,13 +36,14 @@ function new_search_card(item) {
         let favicon = result.querySelector("#favicon")
 
         if (favicon != null && favicon instanceof HTMLImageElement) {
-            favicon.setAttribute("src", url.protocol + "//" + url.hostname + "/favicon.ico")
+            let url_str = url.protocol + "//" + url.hostname + "/favicon.ico"
+            favicon.setAttribute("src", "/api/favicon?url=" + url_str)
         }
 
         const body = result.querySelector(".card-text")
 
         if (body != null && body instanceof HTMLElement) {
-            body.innerHTML = item.snippet
+            body.innerHTML = item.htmlSnippet
         }
     }
 
@@ -60,6 +61,8 @@ async function issue_query(container, q, observer, start_idx = 1) {
     let url = "/api/search?q=" + q
 
     let results = await utils.fetch_as_json(url)
+
+    console.log(results)
 
     if (results != null) {
 
@@ -159,8 +162,9 @@ function init_observer() {
 
 /**
  * @param {IntersectionObserver} observer
+ * @param {string | null} q
  */
-function init_search_bar(observer) {
+function init_search_bar(observer, q) {
 
     const container = document.getElementById('search-results-container')
 
@@ -177,13 +181,34 @@ function init_search_bar(observer) {
                     searchBar.value = ""
                 }
             })
+
+            if (null != q) {
+                searchBar.value = q
+                onenter_cb(container, searchBar, observer)
+            }
         }
     }
 }
 
+/**
+ * @param {any} q
+ */
+function init_search_from_url(q) {
+}
+
 async function main() {
     let observer = init_observer()
-    init_search_bar(observer)
+
+    var q = null
+
+    const queryString = window.location.search;
+
+    if (queryString != null && queryString.length > 0) {
+        const urlParams = new URLSearchParams(queryString);
+        q = urlParams.get('q')
+    }
+
+    init_search_bar(observer, q)
 }
 
 await main()

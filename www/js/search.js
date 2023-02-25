@@ -62,8 +62,6 @@ async function issue_query(container, q, observer, start_idx = 1) {
 
     let results = await utils.fetch_as_json(url)
 
-    console.log(results)
-
     if (results != null) {
 
         for (const item of results.items) {

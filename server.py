@@ -167,8 +167,8 @@ class GCSEHandler:
 
     async def api_search(self, req: AsyncHttpRequest, q: str) -> None:
 
-        await req.send_file("results.json")
-        return
+        # await req.send_file("results.json")
+        # return
 
         aq = AsyncQuery(q)
 
@@ -227,7 +227,7 @@ async def run_server(args) -> None:
 
         server = AsyncHttpServer(args.addr, args.port, verbose=args.verbose)
 
-        if(True == args.disable_cache):
+        if (True == args.disable_cache):
             server.disable_caching()
 
         api_list = [

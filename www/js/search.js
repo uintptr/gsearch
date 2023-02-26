@@ -89,6 +89,10 @@ async function issue_query(container, q, observer, start_idx = 1) {
  */
 async function onenter_cb(container, search_input, observer) {
 
+    const newUrl = '/index.html?q=' + search_input.value
+    const pageTitle = 'Search Results for ' + search_input.value
+    window.history.pushState({ page: newUrl }, pageTitle, newUrl);
+
     utils.remove_all_children(container)
     container.setAttribute("q", "")
 
@@ -200,6 +204,8 @@ async function main() {
     var q = null
 
     const queryString = window.location.search;
+
+    console.log(queryString)
 
     if (queryString != null && queryString.length > 0) {
         const urlParams = new URLSearchParams(queryString);

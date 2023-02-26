@@ -33,6 +33,17 @@ class FavIconCache:
         if (not os.path.exists(self.favicon_dir)):
             os.makedirs(self.favicon_dir)
 
+        default_favicon = os.path.join(script_root, "www", "default.ico")
+
+        self.default = b""
+
+        if (os.path.exists(default_favicon)):
+            with open(default_favicon, "rb") as f:
+                self.default = f.read()
+
+    def get_default(self) -> Optional[bytes]:
+        return self.default
+
     async def get(self, name: str) -> Optional[bytes]:
 
         file_path = os.path.join(self.favicon_dir, name)
@@ -156,15 +167,13 @@ class GCSEHandler:
 
     async def api_search(self, req: AsyncHttpRequest, q: str) -> None:
 
-        # await req.send_file("results.json")
-        # return
+        if (q == "test"):
+            await req.send_file("tests/results.json")
+            return
 
         data = await self._issue_request(q)
 
         if (data != b''):
-            with open("results.json", "wb+") as f:
-                f.write(data)
-
             req.add_header("Content-Type", "application/json")
             await req.send_data(data)
         else:
@@ -187,11 +196,17 @@ class GCSEHandler:
 
                     resp = await client.send_request("GET", q.path)
 
-                    if (resp.status == 200):
+                    if (resp.status >= 200 and resp.status < 300):
                         data = await resp.read_all()
 
                         if (data != b''):
                             await self.favicon_cache.set(q.hostname, data)
+                    else:
+                        data = self.favicon_cache.get_default()
+
+                        if (data is not None):
+                            await self.favicon_cache.set(q.hostname, data)
+
             except OSError:
                 print(f"Unable to connect to {url}")
             except Exception as e:

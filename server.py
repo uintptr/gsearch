@@ -99,31 +99,42 @@ class GCSEHandler:
         async with self.connections_lock:
             self.connections.append(client)
 
-    async def _issue_request(self, q: str) -> bytes:
+    async def _issue_request(self, q: str, max_attempts: int = 5) -> bytes:
+
+        encoded_q = urllib.parse.quote(q)
+        url = f"{self.base_url}&q={encoded_q}"
 
         data = b''
-        connection_good = False
+        attempts = 0
+        replied = False
 
-        client = await self._pop_client_connection()
+        while (False == replied and attempts < max_attempts):
 
-        try:
-            encoded_q = urllib.parse.quote(q)
-            url = f"{self.base_url}&q={encoded_q}"
+            client = await self._pop_client_connection()
 
-            resp = await client.send_request("GET", url)
+            try:
+                resp = await client.send_request("GET", url)
 
-            if (resp.status >= 200 and resp.status < 300):
-                data = await resp.read_all()
+                replied = True
 
-            print(f"{url} returned {resp.status}")
+                if (resp.status >= 200 and resp.status < 300):
+                    data = await resp.read_all()
+                else:
+                    print(f"{url} returned {resp.status}")
 
-            connection_good = True
-        finally:
-            if (True == connection_good):
-                await self._return_client_connection(client)
-            else:
-                await client.close()
+            except ConnectionAbortedError:
+                pass
+            except ConnectionError:
+                pass
+            except Exception as e:
+                print(f"Exception: {e}")
+            finally:
+                if (True == replied):
+                    await self._return_client_connection(client)
+                else:
+                    await client.close()
 
+            attempts += 1
         return data
 
     async def __aenter__(self) -> 'GCSEHandler':

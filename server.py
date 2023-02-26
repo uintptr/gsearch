@@ -5,10 +5,8 @@ import os
 import json
 import errno
 import argparse
-import traceback
 import asyncio
 import urllib.parse
-from dataclasses import dataclass
 from typing import Dict, List, Optional
 from http import HTTPStatus
 
@@ -17,13 +15,6 @@ from ahttp.ahttp import AsyncHttpRequest, AsyncHttpServer, AsyncHttpClient
 DEF_CACHE_TIMEOUT = (1 * (60 * 60))
 DEF_PORT = 8080
 DEF_ADDR = "0.0.0.0"
-
-
-@dataclass
-class AsyncQuery:
-    q: str
-    event = asyncio.Event()
-    data: bytes = b""
 
 
 def printkv(k: str, v: object) -> None:
@@ -67,12 +58,12 @@ class GCSEHandler:
         script_root = os.path.dirname(os.path.abspath(sys.argv[0]))
         self.www_root = os.path.join(script_root, "www")
 
-        self.query_queue = asyncio.Queue()
-        self.query_tasks: List[asyncio.Task] = []
         self.done = False
         self.task_count = task_count
 
         self.config = self._load_config()
+
+        self.server_url = self.config["cse_url"]
 
         api_key = self.config["api_key"]
         cx = self.config["search_engine_id"]
@@ -82,6 +73,9 @@ class GCSEHandler:
 
         self.favicon_cache = FavIconCache()
 
+        self.connections_lock = asyncio.Lock()
+        self.connections: List[AsyncHttpClient] = []
+
     def _load_config(self) -> Dict[str, str]:
 
         script_root = os.path.dirname(os.path.abspath(sys.argv[0]))
@@ -90,69 +84,53 @@ class GCSEHandler:
         with open(config_file) as f:
             return json.load(f)
 
-    async def _issue_request(self, client: AsyncHttpClient, q: AsyncQuery) -> bytes:
+    async def _pop_client_connection(self) -> AsyncHttpClient:
 
-        encoded_q = urllib.parse.quote(q.q)
+        async with self.connections_lock:
+            if (len(self.connections) > 0):
+                return self.connections.pop()
+            else:
+                client = AsyncHttpClient(self.server_url)
+                await client.connect()
+                return client
 
-        url = f"{self.base_url}&q={encoded_q}"
+    async def _return_client_connection(self, client: AsyncHttpClient) -> None:
 
-        resp = await client.send_request("GET", url)
+        async with self.connections_lock:
+            self.connections.append(client)
 
-        if (resp.status >= 200 and resp.status < 300):
-            return await resp.read_all()
+    async def _issue_request(self, q: str) -> bytes:
 
-        print(f"{url} returned {resp.status}")
+        data = b''
+        connection_good = False
 
-        return b''
-
-    async def _query_loop(self, client) -> None:
-
-        while (True):
-            try:
-                q = await self.query_queue.get()
-
-                q.data = await self._issue_request(client, q)
-                q.event.set()
-                self.query_queue.task_done()
-
-                print(f"data len = {len(q.data)}")
-
-            except asyncio.CancelledError as e:
-                raise e
-            except ConnectionResetError:
-                break
-            except BrokenPipeError:
-                break
-            except Exception:
-                traceback.print_exc()
-                break
-
-    async def _query_task(self) -> None:
-
-        url = self.config["cse_url"]
+        client = await self._pop_client_connection()
 
         try:
-            while (True):
-                async with AsyncHttpClient(url) as client:
-                    await self._query_loop(client)
-        except asyncio.CancelledError:
-            # swallow it
-            pass
+            encoded_q = urllib.parse.quote(q)
+            url = f"{self.base_url}&q={encoded_q}"
+
+            resp = await client.send_request("GET", url)
+
+            if (resp.status >= 200 and resp.status < 300):
+                data = await resp.read_all()
+
+            print(f"{url} returned {resp.status}")
+
+            connection_good = True
+        finally:
+            if (True == connection_good):
+                await self._return_client_connection(client)
+            else:
+                await client.close()
+
+        return data
 
     async def __aenter__(self) -> 'GCSEHandler':
-
-        for i in range(0, self.task_count):
-            name = f"query_{i}"
-            t = asyncio.create_task(self._query_task(), name=name)
-            self.query_tasks.append(t)
         return self
 
     async def __aexit__(self, type, value, traceback) -> None:
-        self.done = True
-
-        for t in self.query_tasks:
-            t.cancel()
-            await t
+        pass
 
     async def static_handler(self, req: AsyncHttpRequest) -> None:
 
@@ -170,20 +148,14 @@ class GCSEHandler:
         # await req.send_file("results.json")
         # return
 
-        aq = AsyncQuery(q)
+        data = await self._issue_request(q)
 
-        aq.event.clear()
-
-        await self.query_queue.put(aq)
-        await aq.event.wait()
-
-        if (aq.data != b''):
-
+        if (data != b''):
             with open("results.json", "wb+") as f:
-                f.write(aq.data)
+                f.write(data)
 
             req.add_header("Content-Type", "application/json")
-            await req.send_data(aq.data)
+            await req.send_data(data)
         else:
             req.set_status(HTTPStatus.NOT_FOUND)
 
@@ -209,7 +181,7 @@ class GCSEHandler:
 
                         if (data != b''):
                             await self.favicon_cache.set(q.hostname, data)
-            except OSError as e:
+            except OSError:
                 print(f"Unable to connect to {url}")
             except Exception as e:
                 print(f"{url} failed: {e}")
@@ -262,11 +234,11 @@ def main() -> int:
     parser.add_argument("-v",
                         "--verbose",
                         action="store_true",
-                        help=f"Verbose. Log to stdout.")
+                        help="Verbose. Log to stdout.")
 
     parser.add_argument("--disable-cache",
                         action="store_true",
-                        help=f"Disable caching.")
+                        help="Disable caching.")
 
     args = parser.parse_args()
 

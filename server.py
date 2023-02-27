@@ -113,7 +113,7 @@ class GCSEHandler:
     async def _issue_request(self, q: str, max_attempts: int = 5) -> bytes:
 
         encoded_q = urllib.parse.quote(q)
-        url = f"{self.base_url}&q={encoded_q}"
+        url = f"{self.base_url}&q={encoded_q}&gl=ca"
 
         data = b''
         attempts = 0

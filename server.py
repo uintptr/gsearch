@@ -16,6 +16,18 @@ DEF_CACHE_TIMEOUT = (1 * (60 * 60))
 DEF_PORT = 8080
 DEF_ADDR = "0.0.0.0"
 
+OPEN_SEARCH_TEMPLATE = """
+<?xml version="1.0" encoding="utf-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+  <ShortName>GSearch</ShortName>
+  <Description>GSearch Search</Description>
+  <InputEncoding>UTF-8</InputEncoding>
+  <Image width="32" height="32" type="image/png">favicon.png</Image>
+  <Url type="text/html" method="GET" template="__PROTO__://__HOST__/search?q={searchTerms}"/>
+  <Url type="application/x-suggestions+json" method="GET" template="__PROTO__://__HOST__/suggest?q={searchTerms}"/>
+</OpenSearchDescription>
+"""
+
 
 def printkv(k: str, v: object) -> None:
 
@@ -165,6 +177,10 @@ class GCSEHandler:
 
         await req.send_file(file_path)
 
+    async def search(self, req: AsyncHttpRequest, q: str) -> None:
+
+        await req.send_file(os.path.join(self.www_root, "index.html"))
+
     async def api_search(self, req: AsyncHttpRequest, q: str) -> None:
 
         if (q == "test"):
@@ -178,6 +194,16 @@ class GCSEHandler:
             await req.send_data(data)
         else:
             req.set_status(HTTPStatus.NOT_FOUND)
+
+    async def opensearch(self, req: AsyncHttpRequest) -> None:
+
+        proto = "http"
+
+        opensearch = OPEN_SEARCH_TEMPLATE.replace("__HOST__", req.host)
+        opensearch = opensearch.replace("__PROTO__", proto)
+
+        req.set_mime_type("application/xml")
+        await req.send_as_text(opensearch)
 
     async def api_favicon(self, req: AsyncHttpRequest, url: str) -> None:
 
@@ -229,6 +255,8 @@ async def run_server(args) -> None:
             server.disable_caching()
 
         api_list = [
+            server.get("/search", handler.search, DEF_CACHE_TIMEOUT),
+            server.get("/opensearch.xml", handler.opensearch),
             server.get("/api/search", handler.api_search, DEF_CACHE_TIMEOUT),
             server.get("/api/favicon", handler.api_favicon, DEF_CACHE_TIMEOUT),
         ]

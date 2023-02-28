@@ -72,3 +72,9 @@ export function set_selector_text(component, selector, inner_html) {
         element.innerHTML = inner_html
     }
 }
+
+
+export function isMobile() {
+    const ua = navigator.userAgent;
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+}

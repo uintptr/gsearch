@@ -26,6 +26,7 @@ OPEN_SEARCH_TEMPLATE = """
   <OutputEncoding>UTF-8</OutputEncoding>
 </OpenSearchDescription>"""
 
+
 def printkv(k: str, v: object) -> None:
 
     k = f"{k}:"
@@ -194,12 +195,7 @@ class GCSEHandler:
 
     async def opensearch(self, req: AsyncHttpRequest) -> None:
 
-        proto = "https"
-
         opensearch = OPEN_SEARCH_TEMPLATE.replace("__HOST__", req.host)
-        opensearch = opensearch.replace("__PROTO__", proto)
-
-        print(opensearch)
 
         req.set_mime_type("application/xml")
         await req.send_as_text(opensearch)

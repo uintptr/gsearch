@@ -177,6 +177,13 @@ function init_search_bar(observer, q) {
 
             searchBar.addEventListener("keyup", function (e) {
                 if (e.key == "Enter") {
+
+                    //
+                    // hide the keyboard
+                    //
+                    if (true == utils.isMobile()) {
+                        searchBar.blur()
+                    }
                     onenter_cb(container, searchBar, observer)
                 }
                 else if (e.key == "Escape") {
@@ -188,6 +195,24 @@ function init_search_bar(observer, q) {
                 searchBar.value = q
                 onenter_cb(container, searchBar, observer)
             }
+
+            const clear_btn = document.getElementById("clear_search")
+
+            if (clear_btn != null && clear_btn instanceof HTMLButtonElement) {
+                clear_btn.addEventListener("click", function (e) {
+                    searchBar.value = ""
+                    onenter_cb(container, searchBar, observer)
+                })
+            }
+        }
+
+    }
+
+    const sb_container = document.getElementById("search_bar_container")
+
+    if (sb_container != null && sb_container instanceof HTMLElement) {
+        if (true == utils.isMobile()) {
+            sb_container.classList.add("fixed-bottom")
         }
     }
 }

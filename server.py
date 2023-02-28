@@ -134,7 +134,7 @@ class GCSEHandler:
             client = await self._pop_client_connection()
 
             try:
-                resp = await client.send_request("GET", url)
+                resp = await client.get(url)
 
                 replied = True
 
@@ -215,7 +215,7 @@ class GCSEHandler:
             try:
                 async with AsyncHttpClient(url) as client:
 
-                    resp = await client.send_request("GET", q.path)
+                    resp = await client.get(q.path)
 
                     if (resp.status >= 200 and resp.status < 300):
                         data = await resp.read_all()

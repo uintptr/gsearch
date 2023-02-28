@@ -17,17 +17,14 @@ DEF_PORT = 8080
 DEF_ADDR = "0.0.0.0"
 
 OPEN_SEARCH_TEMPLATE = """
-<?xml version="1.0" encoding="utf-8"?>
 <OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
   <ShortName>GSearch</ShortName>
-  <Description>GSearch Search</Description>
+  <Description>Search gsearch.com</Description>
+  <Url type="text/html" method="get" template="https://gsearch.com/search?q={searchTerms}"/>
+  <Image width="16" height="16" type="image/x-icon">https://gsearch.com/favicon.ico</Image>
   <InputEncoding>UTF-8</InputEncoding>
-  <Image width="32" height="32" type="image/png">favicon.png</Image>
-  <Url type="text/html" method="GET" template="__PROTO__://__HOST__/search?q={searchTerms}"/>
-  <Url type="application/x-suggestions+json" method="GET" template="__PROTO__://__HOST__/suggest?q={searchTerms}"/>
-</OpenSearchDescription>
-"""
-
+  <OutputEncoding>UTF-8</OutputEncoding>
+</OpenSearchDescription>"""
 
 def printkv(k: str, v: object) -> None:
 
@@ -197,10 +194,12 @@ class GCSEHandler:
 
     async def opensearch(self, req: AsyncHttpRequest) -> None:
 
-        proto = "http"
+        proto = "https"
 
         opensearch = OPEN_SEARCH_TEMPLATE.replace("__HOST__", req.host)
         opensearch = opensearch.replace("__PROTO__", proto)
+
+        print(opensearch)
 
         req.set_mime_type("application/xml")
         await req.send_as_text(opensearch)

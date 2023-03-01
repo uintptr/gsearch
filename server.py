@@ -162,6 +162,9 @@ class GCSEHandler:
     async def __aexit__(self, type, value, traceback) -> None:
         pass
 
+    async def _gzipped(self, data: bytes) -> bool:
+        return (data[0] == 0x1f and data[1] == 0x8b)
+
     async def _favicon_get(self, url) -> Optional[bytes]:
 
         q = urllib.parse.urlparse(url)
@@ -247,6 +250,10 @@ class GCSEHandler:
 
         if (data is not None):
             req.add_header("Content-Type", "image/x-icon")
+
+            if (self._gzipped(data)):
+                req.add_header("content-encoding", "gzip")
+
             await req.send_data(data)
         else:
             req.set_status(HTTPStatus.NOT_FOUND)

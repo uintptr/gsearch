@@ -242,6 +242,10 @@ class GCSEHandler:
             # not cached
             data = await self._favicon_get(url)
 
+            if (data is not None and data[0] == 0x3c and data[1] == 0x21):
+                # likely html...
+                data = None
+
             if (data is not None):
                 async with self.favicon_cache_lock:
                     self.favicon_cache.set(q.hostname, data)

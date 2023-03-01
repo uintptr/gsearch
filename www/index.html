@@ -28,7 +28,8 @@
 
     <div class="container mt-2 mb-2" id="search_bar_container">
         <div class="input-group">
-            <input id="search_bar" autocapitalize="off" class="form-control" type="search" placeholder="Search..." aria-label="Search">
+            <input id="search_bar" autocapitalize="off" class="form-control" type="search" placeholder="Search..."
+                aria-label="Search" autofocus>
             <button class="btn btn-outline-secondary" type="button" id="clear_search">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                     class="bi bi-trash-fill" viewBox="0 0 16 16">
@@ -38,13 +39,13 @@
         </div>
     </div>
 
-    <div class="container">
-        <div id="search-results-container" class="container-fluid">
-        </div>
+
+    <div class="container" id="search-results-container">
+
     </div>
 
     <template id="search_result">
-        <div class="card w-100 mb-2 shadow-sm">
+        <div class="card mb-2 shadow-sm" id="search_card">
             <div class="card-body">
                 <h7 class="card-title"><img id="favicon" class="mx-2" width=16 height="16" src=""><a id="title_link"
                         href="/"></a></h7>
@@ -53,6 +54,11 @@
                     <p class="small-text card-text text-wrap"></p>
                 </div>
             </div>
+        </div>
+    </template>
+
+    <template id="alert_spelling">
+        <div class="alert alert-secondary" role="alert">
         </div>
     </template>
 

@@ -45,6 +45,14 @@ function new_search_card(item) {
         if (body != null && body instanceof HTMLElement) {
             body.innerHTML = item.htmlSnippet
         }
+
+        result.addEventListener("mouseenter", function () {
+            this.classList.add("bg-body-tertiary")
+        })
+
+        result.addEventListener("mouseleave", function () {
+            this.classList.remove("bg-body-tertiary")
+        })
     }
 
     return result
@@ -64,6 +72,16 @@ async function issue_query(container, q, observer, start_idx = 1) {
 
     if (results != null) {
 
+        if (results.hasOwnProperty("spelling")) {
+            const alert = utils.new_template("alert_spelling")
+
+            if (alert != null) {
+                let actual = results.spelling.correctedQuery
+                alert.innerHTML = `Results for "${actual}"`
+                container.appendChild(alert)
+            }
+        }
+
         for (const item of results.items) {
 
             let card = new_search_card(item)
@@ -82,6 +100,15 @@ async function issue_query(container, q, observer, start_idx = 1) {
 }
 
 /**
+ * @param {string} title
+ * @param {string} url
+ */
+function update_url_bar(title, url) {
+    window.history.pushState({ page: url }, title, url);
+
+}
+
+/**
  * @param {HTMLElement} container
  * @param {HTMLInputElement} search_input
  * @param {IntersectionObserver} observer
@@ -89,9 +116,10 @@ async function issue_query(container, q, observer, start_idx = 1) {
  */
 async function onenter_cb(container, search_input, observer) {
 
-    const newUrl = '/index.html?q=' + search_input.value
+    const newUrl = '/search?q=' + search_input.value
     const pageTitle = 'Search Results for ' + search_input.value
-    window.history.pushState({ page: newUrl }, pageTitle, newUrl);
+
+    update_url_bar(pageTitle, newUrl)
 
     utils.remove_all_children(container)
     container.setAttribute("q", "")
@@ -201,7 +229,9 @@ function init_search_bar(observer, q) {
             if (clear_btn != null && clear_btn instanceof HTMLButtonElement) {
                 clear_btn.addEventListener("click", function (e) {
                     searchBar.value = ""
-                    onenter_cb(container, searchBar, observer)
+                    utils.remove_all_children(container)
+                    searchBar.focus()
+                    update_url_bar("GSearch", "/")
                 })
             }
         }
@@ -229,8 +259,6 @@ async function main() {
     var q = null
 
     const queryString = window.location.search;
-
-    console.log(queryString)
 
     if (queryString != null && queryString.length > 0) {
         const urlParams = new URLSearchParams(queryString);

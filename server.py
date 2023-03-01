@@ -20,8 +20,8 @@ OPEN_SEARCH_TEMPLATE = """
 <OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
   <ShortName>GSearch</ShortName>
   <Description>Search gsearch.com</Description>
-  <Url type="text/html" method="get" template="https://gsearch.com/search?q={searchTerms}"/>
-  <Image width="16" height="16" type="image/x-icon">https://gsearch.com/favicon.ico</Image>
+  <Url type="text/html" method="get" template="https://__HOST__search?q={searchTerms}"/>
+  <Image width="16" height="16" type="image/x-icon">https://__HOST__/favicon.ico</Image>
   <InputEncoding>UTF-8</InputEncoding>
   <OutputEncoding>UTF-8</OutputEncoding>
 </OpenSearchDescription>"""
@@ -37,7 +37,6 @@ class FavIconCache:
     def __init__(self) -> None:
         script_root = os.path.dirname(os.path.abspath(sys.argv[0]))
 
-        self.favicon_lock = asyncio.Lock()
         self.favicon_dir = os.path.join(script_root, "favicon")
 
         if (not os.path.exists(self.favicon_dir)):
@@ -54,24 +53,22 @@ class FavIconCache:
     def get_default(self) -> Optional[bytes]:
         return self.default
 
-    async def get(self, name: str) -> Optional[bytes]:
+    def get(self, name: str) -> Optional[bytes]:
 
         file_path = os.path.join(self.favicon_dir, name)
 
-        async with self.favicon_lock:
-            if (os.path.exists(file_path)):
-                with open(file_path, "rb") as f:
-                    return f.read()
+        if (os.path.exists(file_path)):
+            with open(file_path, "rb") as f:
+                return f.read()
 
         return None
 
-    async def set(self, name: str, data: bytes) -> None:
+    def set(self, name: str, data: bytes) -> None:
 
         file_path = os.path.join(self.favicon_dir, name)
 
-        async with self.favicon_lock:
-            with open(file_path, "wb") as f:
-                f.write(data)
+        with open(file_path, "wb") as f:
+            f.write(data)
 
 
 class GCSEHandler:
@@ -92,6 +89,7 @@ class GCSEHandler:
         self.base_url = f"/customsearch/v1?key={api_key}"
         self.base_url += f"&cx={cx}"
 
+        self.favicon_cache_lock = asyncio.Lock()
         self.favicon_cache = FavIconCache()
 
         self.connections_lock = asyncio.Lock()
@@ -164,6 +162,28 @@ class GCSEHandler:
     async def __aexit__(self, type, value, traceback) -> None:
         pass
 
+    async def _favicon_get(self, url) -> Optional[bytes]:
+
+        q = urllib.parse.urlparse(url)
+
+        try:
+            async with AsyncHttpClient(url) as client:
+
+                resp = await client.get(q.path)
+
+                if (resp.status >= 200 and resp.status < 300):
+                    return await resp.read_all()
+
+        except OSError:
+            print(f"Unable to connect to {url}")
+        except Exception as e:
+            print(f"{url} failed: {e}")
+
+        return None
+
+    ############################################################################
+    # PUBLIC
+    ############################################################################
     async def static_handler(self, req: AsyncHttpRequest) -> None:
 
         fn = os.path.abspath(req.path)[1:]
@@ -182,13 +202,17 @@ class GCSEHandler:
     async def api_search(self, req: AsyncHttpRequest, q: str) -> None:
 
         if (q == "test"):
-            await req.send_file("tests/results.json")
+            await req.send_file("tests/test.json")
             return
 
         data = await self._issue_request(q)
 
         if (data != b''):
             req.add_header("Content-Type", "application/json")
+
+            with open("results.json", "wb+") as f:
+                f.write(data)
+
             await req.send_data(data)
         else:
             req.set_status(HTTPStatus.NOT_FOUND)
@@ -208,30 +232,18 @@ class GCSEHandler:
             req.set_status(HTTPStatus.BAD_REQUEST)
             return
 
-        data = await self.favicon_cache.get(q.hostname)
+        async with self.favicon_cache_lock:
+            data = self.favicon_cache.get(q.hostname)
 
         if (data is None):
+            # not cached
+            data = await self._favicon_get(url)
 
-            try:
-                async with AsyncHttpClient(url) as client:
-
-                    resp = await client.get(q.path)
-
-                    if (resp.status >= 200 and resp.status < 300):
-                        data = await resp.read_all()
-
-                        if (data != b''):
-                            await self.favicon_cache.set(q.hostname, data)
-                    else:
-                        data = self.favicon_cache.get_default()
-
-                        if (data is not None):
-                            await self.favicon_cache.set(q.hostname, data)
-
-            except OSError:
-                print(f"Unable to connect to {url}")
-            except Exception as e:
-                print(f"{url} failed: {e}")
+            if (data is not None):
+                async with self.favicon_cache_lock:
+                    self.favicon_cache.set(q.hostname, data)
+            else:
+                data = self.favicon_cache.get_default()
 
         if (data is not None):
             req.add_header("Content-Type", "image/x-icon")

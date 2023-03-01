@@ -242,7 +242,7 @@ class GCSEHandler:
             # not cached
             data = await self._favicon_get(url)
 
-            if (data is not None and data[0] == 0x3c and data[1] == 0x21):
+            if (data is not None and data != b'' and data[0] == 0x3c and data[1] == 0x21):
                 # likely html...
                 data = None
 

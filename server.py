@@ -163,7 +163,7 @@ class GCSEHandler:
         pass
 
     def _gzipped(self, data: bytes) -> bool:
-        return (data[0] == 0x1f and data[1] == 0x8b)
+        return (data != b'' and data[0] == 0x1f and data[1] == 0x8b)
 
     async def _favicon_get(self, url) -> Optional[bytes]:
 

@@ -10,6 +10,12 @@ import urllib.parse
 from typing import Dict, List, Optional
 from http import HTTPStatus
 
+try:
+    import openai
+    have_openai = True
+except ImportError:
+    have_openai = False
+
 from ahttp.ahttp import AsyncHttpRequest, AsyncHttpServer, AsyncHttpClient
 
 DEF_CACHE_TIMEOUT = (1 * (60 * 60))
@@ -88,6 +94,11 @@ class GCSEHandler:
 
         self.base_url = f"/customsearch/v1?key={api_key}"
         self.base_url += f"&cx={cx}"
+
+        if ("openai_key" in self.config):
+            openai.api_key = self.config["openai_key"]
+        else:
+            have_openai = False
 
         self.favicon_cache_lock = asyncio.Lock()
         self.favicon_cache = FavIconCache()
@@ -220,6 +231,24 @@ class GCSEHandler:
         else:
             req.set_status(HTTPStatus.NOT_FOUND)
 
+    async def api_chat(self, req: AsyncHttpRequest, q: str) -> None:
+
+        if (False == have_openai):
+            req.set_status(HTTPStatus.NOT_IMPLEMENTED)
+            return
+
+        completion = await openai.ChatCompletion.acreate(
+            model="gpt-3.5-turbo",
+
+            messages=[
+                # {"role": "system”, “content”: “Your are a snarky and sarsacastic search engine answersing simple questions."},
+                {"role": "user", "content": q},
+            ]
+        )
+
+        response_dict = completion.choices[0].message.to_dict() # type: ignore
+        await req.send_as_json(response_dict)
+
     async def opensearch(self, req: AsyncHttpRequest) -> None:
 
         opensearch = OPEN_SEARCH_TEMPLATE.replace("__HOST__", req.host)
@@ -277,6 +306,7 @@ async def run_server(args) -> None:
             server.get("/opensearch.xml", handler.opensearch),
             server.get("/api/search", handler.api_search, DEF_CACHE_TIMEOUT),
             server.get("/api/favicon", handler.api_favicon, DEF_CACHE_TIMEOUT),
+            server.get("/api/chat", handler.api_chat, DEF_CACHE_TIMEOUT),
         ]
 
         server.add_routes(api_list)

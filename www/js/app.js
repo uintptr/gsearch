@@ -2,6 +2,7 @@
 
 import * as utils from "./utils.js"
 
+
 export { }
 
 /**
@@ -192,9 +193,10 @@ function init_observer() {
 
 /**
  * @param {IntersectionObserver} observer
+ * @param {Worker} worker
  * @param {string | null} q
  */
-function init_search_bar(observer, q) {
+function init_search_bar(observer, worker, q) {
 
     const container = document.getElementById('search-results-container')
 
@@ -205,6 +207,8 @@ function init_search_bar(observer, q) {
 
             searchBar.addEventListener("keyup", function (e) {
                 if (e.key == "Enter") {
+
+                    worker.postMessage(["chat", searchBar.value])
 
                     //
                     // hide the keyboard
@@ -248,9 +252,30 @@ function init_search_bar(observer, q) {
 }
 
 /**
- * @param {any} q
+ * @param {string} msg
  */
-function init_search_from_url(q) {
+async function add_chat_message(msg) {
+
+    //@ts-ignore
+    var converter = new showdown.Converter()
+    converter.setFlavor('github');
+    let html = converter.makeHtml(msg);
+    const search_results = document.getElementById("search-results-container")
+
+    if (search_results != null && search_results instanceof HTMLElement) {
+
+        const container = utils.new_template("chatgpt_sandbox")
+
+        if (container != null) {
+
+            const chat = container.querySelector("#chat_msg")
+
+            if (chat != null && chat instanceof HTMLElement) {
+                chat.innerHTML = html
+                search_results.insertBefore(container, search_results.firstChild)
+            }
+        }
+    }
 }
 
 async function main() {
@@ -265,7 +290,22 @@ async function main() {
         q = urlParams.get('q')
     }
 
-    init_search_bar(observer, q)
+    const worker = new Worker('/js/bg.js');
+
+    init_search_bar(observer, worker, q)
+
+
+    // listen for messages from the web worker
+    worker.onmessage = function (event) {
+
+        let data = event.data
+
+        if (data != null && data instanceof Array) {
+            if ("chat" == data[0]) {
+                add_chat_message(data[1])
+            }
+        }
+    };
 }
 
 await main()

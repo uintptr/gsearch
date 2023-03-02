@@ -26,7 +26,7 @@ OPEN_SEARCH_TEMPLATE = """
 <OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
   <ShortName>GSearch</ShortName>
   <Description>Search gsearch.com</Description>
-  <Url type="text/html" method="get" template="https://__HOST__search?q={searchTerms}"/>
+  <Url type="text/html" method="get" template="https://__HOST__/search?q={searchTerms}"/>
   <Image width="16" height="16" type="image/x-icon">https://__HOST__/favicon.ico</Image>
   <InputEncoding>UTF-8</InputEncoding>
   <OutputEncoding>UTF-8</OutputEncoding>

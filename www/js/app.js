@@ -2,8 +2,14 @@
 
 import * as utils from "./utils.js"
 
-
 export { }
+
+const HIGH_VALUE_DOMAINS = {
+    "wikipedia.org": 1,
+    "github.com": 1,
+    "imdb.com": 1,
+    "stackoverflow.com": 1,
+}
 
 /**
  * @param {any} item
@@ -59,11 +65,36 @@ function new_search_card(item) {
     return result
 }
 
+
+/**
+ * @param {any[]} results
+ * @returns {any[]}
+ */
+function promote_results(results) {
+
+    let promoted = []
+
+    for (let k in HIGH_VALUE_DOMAINS) {
+        for (var i = 0; i < results.length; i++) {
+            if (results[i].link.includes(k)) {
+                console.log("promoting " + results[i].link)
+                promoted.push(results[i])
+                results.splice(i, 1)
+            }
+        }
+    }
+
+    return promoted.concat(results)
+}
+
+
+
+
 /**
  * @param {HTMLElement} container
  * @param {string} q
  * @param {IntersectionObserver} observer
- *
+ * @param {{ postMessage: (arg0: string[]) => void; }} worker
  */
 async function issue_query(container, worker, q, observer, start_idx = 1) {
 
@@ -85,7 +116,9 @@ async function issue_query(container, worker, q, observer, start_idx = 1) {
             }
         }
 
-        for (const item of results.items) {
+        let promoted_results = promote_results(results.items)
+
+        for (const item of promoted_results) {
 
             let card = new_search_card(item)
 
@@ -115,7 +148,7 @@ function update_url_bar(title, url) {
  * @param {HTMLElement} container
  * @param {HTMLInputElement} search_input
  * @param {IntersectionObserver} observer
- *
+ * @param {Worker} worker
  */
 async function onenter_cb(container, worker, search_input, observer) {
 
@@ -257,10 +290,6 @@ function init_search_bar(observer, worker, q) {
  */
 async function add_chat_message(msg) {
 
-    //@ts-ignore
-    var converter = new showdown.Converter()
-    converter.setFlavor('github');
-    let html = converter.makeHtml(msg);
     const search_results = document.getElementById("search-results-container")
 
     if (search_results != null && search_results instanceof HTMLElement) {
@@ -272,7 +301,8 @@ async function add_chat_message(msg) {
             const chat = container.querySelector("#chat_msg")
 
             if (chat != null && chat instanceof HTMLElement) {
-                chat.innerHTML = html
+                //@ts-ignore
+                chat.innerHTML = marked.parse(msg)
                 search_results.insertBefore(container, search_results.firstChild)
             }
         }
@@ -294,7 +324,6 @@ async function main() {
     const worker = new Worker('/js/bg.js');
 
     init_search_bar(observer, worker, q)
-
 
     // listen for messages from the web worker
     worker.onmessage = function (event) {

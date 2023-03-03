@@ -28,8 +28,7 @@ async function query_chat_gpt(query) {
 
     let message = await fetch_as_json("/api/chat?q=" + query)
 
-    if(message != null)
-    {
+    if (message != null) {
         return message.content
     }
 
@@ -46,16 +45,15 @@ onmessage = async function (event) {
         if (data[0] == "chat") {
 
             msg = await query_chat_gpt(data[1])
-            if(msg != null)
-            {
+
+            if (msg != null) {
                 postMessage(["chat", msg])
             }
         }
-        else
-        {
+        else {
             console.log("Unknown command: " + data[0])
         }
-    }else{
+    } else {
         console.log("invalid params")
     }
 };

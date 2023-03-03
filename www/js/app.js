@@ -65,9 +65,11 @@ function new_search_card(item) {
  * @param {IntersectionObserver} observer
  *
  */
-async function issue_query(container, q, observer, start_idx = 1) {
+async function issue_query(container, worker, q, observer, start_idx = 1) {
 
     let url = "/api/search?q=" + q
+
+    worker.postMessage(["chat", q])
 
     let results = await utils.fetch_as_json(url)
 
@@ -115,7 +117,7 @@ function update_url_bar(title, url) {
  * @param {IntersectionObserver} observer
  *
  */
-async function onenter_cb(container, search_input, observer) {
+async function onenter_cb(container, worker, search_input, observer) {
 
     const newUrl = '/search?q=' + search_input.value
     const pageTitle = 'Search Results for ' + search_input.value
@@ -131,7 +133,7 @@ async function onenter_cb(container, search_input, observer) {
     else {
 
         container.setAttribute("q", search_input.value)
-        await issue_query(container, search_input.value, observer)
+        await issue_query(container, worker, search_input.value, observer)
     }
 }
 
@@ -208,7 +210,6 @@ function init_search_bar(observer, worker, q) {
             searchBar.addEventListener("keyup", function (e) {
                 if (e.key == "Enter") {
 
-                    worker.postMessage(["chat", searchBar.value])
 
                     //
                     // hide the keyboard
@@ -216,7 +217,7 @@ function init_search_bar(observer, worker, q) {
                     if (true == utils.isMobile()) {
                         searchBar.blur()
                     }
-                    onenter_cb(container, searchBar, observer)
+                    onenter_cb(container, worker, searchBar, observer)
                 }
                 else if (e.key == "Escape") {
                     searchBar.value = ""
@@ -225,7 +226,7 @@ function init_search_bar(observer, worker, q) {
 
             if (null != q) {
                 searchBar.value = q
-                onenter_cb(container, searchBar, observer)
+                onenter_cb(container, worker, searchBar, observer)
             }
 
             const clear_btn = document.getElementById("clear_search")

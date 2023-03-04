@@ -224,9 +224,6 @@ class GCSEHandler:
         if (data != b''):
             req.add_header("Content-Type", "application/json")
 
-            with open("results.json", "wb+") as f:
-                f.write(data)
-
             await req.send_data(data)
         else:
             req.set_status(HTTPStatus.NOT_FOUND)
@@ -246,7 +243,7 @@ class GCSEHandler:
             ]
         )
 
-        response_dict = completion.choices[0].message.to_dict() # type: ignore
+        response_dict = completion.choices[0].message.to_dict()  # type: ignore
         await req.send_as_json(response_dict)
 
     async def opensearch(self, req: AsyncHttpRequest) -> None:
@@ -294,9 +291,16 @@ class GCSEHandler:
 
 async def run_server(args) -> None:
 
+    script_root = os.path.dirname(os.path.abspath(sys.argv[0]))
+
+    log_file = os.path.join(script_root, "gcse.log")
+
     async with GCSEHandler() as handler:
 
-        server = AsyncHttpServer(args.addr, args.port, verbose=args.verbose)
+        server = AsyncHttpServer(args.addr,
+                                 args.port,
+                                 log_file=log_file,
+                                 verbose=args.verbose)
 
         if (True == args.disable_cache):
             server.disable_caching()

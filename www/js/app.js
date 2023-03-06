@@ -47,12 +47,13 @@ function new_search_card(item) {
             favicon.setAttribute("src", "/api/favicon?url=" + url_str)
         }
 
-        const body = result.querySelector(".card-text")
+        const body = result.querySelector("#result_text")
 
         if (body != null && body instanceof HTMLElement) {
             body.innerHTML = item.htmlSnippet
         }
 
+        /*
         result.addEventListener("mouseenter", function () {
             this.classList.add("bg-body-tertiary")
         })
@@ -60,6 +61,7 @@ function new_search_card(item) {
         result.addEventListener("mouseleave", function () {
             this.classList.remove("bg-body-tertiary")
         })
+        */
     }
 
     return result
@@ -88,8 +90,6 @@ function promote_results(results) {
 }
 
 
-
-
 /**
  * @param {HTMLElement} container
  * @param {string} q
@@ -100,7 +100,7 @@ async function issue_query(container, worker, q, observer, start_idx = 1) {
 
     let url = "/api/search?q=" + q
 
-    worker.postMessage(["chat", q])
+    //worker.postMessage(["chat", q])
 
     let results = await utils.fetch_as_json(url)
 

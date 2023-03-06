@@ -28,15 +28,132 @@
             color: white;
             padding: 4px;
         }
+
+
+        .title-row {
+            background: black;
+            max-height: 22px;
+            line-height: 22px;
+        }
+
+        .url-row {
+            background-color: black;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        .text-row {
+            background-color: black;
+        }
+
+        .status-row {
+            background-color: #aaaaaa;
+            max-height: 6px;
+            min-height: 6px;
+        }
+
+        .status-left {
+            max-width: 28px;
+            border-style: solid;
+            border-top-color: #ffffffff;
+            border-right-color: #555555;
+            border-left-color: black;
+            border-bottom-color: black;
+            border-top-width: 1px;
+            border-right-width: 1px;
+            border-left-width: 1px;
+            border-bottom-width: 1px;
+        }
+
+        .status-mid {
+            border-style: solid;
+            border-top-color: #ffffffff;
+            border-left-color: white;
+            border-right-color: #555555;
+            border-bottom-color: black;
+            border-top-width: 1px;
+            border-right-width: 1px;
+            border-left-width: 1px;
+            border-bottom-width: 1px;
+        }
+
+        .status-right {
+            max-width: 28px;
+            border-style: solid;
+            border-top-color: #ffffffff;
+            border-right-color: #555555;
+            border-left-color: white;
+            border-bottom-color: black;
+            border-right-color: black;
+            border-top-width: 1px;
+            border-right-width: 1px;
+            border-left-width: 1px;
+            border-bottom-width: 1px;
+        }
+
+        .icon-col {
+            max-width: 22px;
+            max-height: 22px;
+        }
+
+        .title-col {
+            font-family: 'Times New Roman', Times, serif;
+            margin-left: 1px;
+            margin-right: 1px;
+            padding-left: 1px;
+        }
+
+        .wmaker-title-bar,
+        .title-col,
+        .icon-col {
+            font-weight: bold;
+            border-style: solid;
+            border-right-color: #616161;
+            border-bottom-color: #616161;
+            border-top-color: #b6b6b6;
+            border-left-color: #b6b6b6;
+            border-width: 1px;
+        }
+
+        .title-link {
+            text-decoration: none;
+            color: white;
+        }
+
+        .result-card{
+            background-color: #e5e5e5;
+            color: black;
+        }
+
+        .search-input{
+            background-color:black !important;
+            color: white !important;
+            border-radius: 0 !important;
+            border-top-color: black !important;
+        }
+
     </style>
 </head>
 
-<body class="p-0 m-0 border-0">
+<body class="p-0 m-0 border-0" style="background-color: #0000ee">
+
+    <div class="container-fluid mb-2 p-0">
+        <div class="d-flex flex-row title-row p-0 m-0">
+            <div class="col-1 icon-col">
+                <img class="align-top" src="/img/minimize.png">
+            </div>
+            <div class="col-10 title-col flex-fill text-center">
+                GSearch
+            </div>
+            <div class="col-1 icon-col">
+                <img class="align-top" src="/img/close.png">
+            </div>
+        </div>
+    </div>
 
     <div class="container mt-2 mb-2" id="search_bar_container">
         <div class="input-group">
-            <input id="search_bar" autocapitalize="off" class="form-control" type="search" placeholder="Search..."
-                aria-label="Search" autofocus>
+            <input id="search_bar" autocapitalize="off" class="form-control search-input" type="search"
+                placeholder="Search..." aria-label="Search" autofocus>
             <button class="btn btn-outline-secondary" type="button" id="clear_search">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                     class="bi bi-trash-fill" viewBox="0 0 16 16">
@@ -46,23 +163,29 @@
         </div>
     </div>
 
-
     <div class="container" id="search-results-container">
-
     </div>
 
     <template id="search_result">
-        <div class="card mb-2 shadow-sm" id="search_card">
+        <div class="card mb-2 shadow-sm result-card" id="search_card">
             <div class="card-body">
                 <h7 class="card-title"><img id="favicon" class="mx-2" width=16 height="16" src=""><a id="title_link"
                         href="/"></a></h7>
                 <div class="container-flex">
                     <p id="url_parts" class="xxsmall-text font-monospace text-truncate"></p>
-                    <p class="small-text card-text text-wrap"></p>
+                    <p class="small-text card-text text-wrap" id="result_text"></p>
                 </div>
             </div>
         </div>
     </template>
+
+    <div class="fixed-bottom">
+        <div class="d-flex flex-row status-row p-0 m-0">
+            <div class="col status-left"></div>
+            <div class="col status-mid flex-fill"></div>
+            <div class="col status-right"></div>
+        </div>
+    </div>
 
     <template id="alert_spelling">
         <div class="alert alert-secondary" role="alert">

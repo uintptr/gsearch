@@ -30,28 +30,19 @@
         }
 
 
-        .title-row {
+        .wm-title-row {
             background: black;
             max-height: 22px;
             line-height: 22px;
         }
 
-        .url-row {
-            background-color: black;
-            font-family: 'Courier New', Courier, monospace;
-        }
-
-        .text-row {
-            background-color: black;
-        }
-
-        .status-row {
+        .wm-status-row {
             background-color: #aaaaaa;
             max-height: 6px;
             min-height: 6px;
         }
 
-        .status-left {
+        .wm-status-left {
             max-width: 28px;
             border-style: solid;
             border-top-color: #ffffffff;
@@ -64,7 +55,7 @@
             border-bottom-width: 1px;
         }
 
-        .status-mid {
+        .wm-status-mid {
             border-style: solid;
             border-top-color: #ffffffff;
             border-left-color: white;
@@ -76,7 +67,7 @@
             border-bottom-width: 1px;
         }
 
-        .status-right {
+        .wm-status-right {
             max-width: 28px;
             border-style: solid;
             border-top-color: #ffffffff;
@@ -90,12 +81,12 @@
             border-bottom-width: 1px;
         }
 
-        .icon-col {
+        .wm-icon-col {
             max-width: 22px;
             max-height: 22px;
         }
 
-        .title-col {
+        .wm-title-col {
             font-family: 'Times New Roman', Times, serif;
             margin-left: 1px;
             margin-right: 1px;
@@ -103,8 +94,8 @@
         }
 
         .wmaker-title-bar,
-        .title-col,
-        .icon-col {
+        .wm-title-col,
+        .wm-icon-col {
             font-weight: bold;
             border-style: solid;
             border-right-color: #616161;
@@ -114,39 +105,42 @@
             border-width: 1px;
         }
 
-        .title-link {
-            text-decoration: none;
-            color: white;
-        }
-
-        .result-card{
-            background-color: #e5e5e5;
-            color: black;
-        }
-
-        .search-input{
-            background-color:black !important;
+        .search-input {
+            background-color: black !important;
             color: white !important;
             border-radius: 0 !important;
             border-top-color: black !important;
         }
 
+        .clear-button {
+            color: yellow
+        }
+
+        .result-card {
+            background-color: #e5e5e5;
+            color: black;
+            font-family:Arial, Helvetica, sans-serif
+        }
+
+        .url-parts {
+            font-size: xx-small;
+            font-family: monospace;
+        }
     </style>
 </head>
 
 <body class="p-0 m-0 border-0" style="background-color: #0000ee">
 
-    <div class="container-fluid mb-2 p-0">
-        <div class="d-flex flex-row title-row p-0 m-0">
-            <div class="col-1 icon-col">
-                <img class="align-top" src="/img/minimize.png">
-            </div>
-            <div class="col-10 title-col flex-fill text-center">
-                GSearch
-            </div>
-            <div class="col-1 icon-col">
-                <img class="align-top" src="/img/close.png">
-            </div>
+    <!-- wmaker title bar -->
+    <div class="d-flex flex-row wm-title-row p-0 m-0">
+        <div class="col-1 wm-icon-col">
+            <img class="align-top" src="/img/minimize.png">
+        </div>
+        <div class="col-10 wm-title-col flex-fill text-center">
+            GSearch
+        </div>
+        <div class="col-1 wm-icon-col">
+            <img class="align-top" src="/img/close.png">
         </div>
     </div>
 
@@ -154,20 +148,39 @@
         <div class="input-group">
             <input id="search_bar" autocapitalize="off" class="form-control search-input" type="search"
                 placeholder="Search..." aria-label="Search" autofocus>
-            <button class="btn btn-outline-secondary" type="button" id="clear_search">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                    class="bi bi-trash-fill" viewBox="0 0 16 16">
-                    <path
-                        d="M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1H2.5zm3 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5zM8 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7A.5.5 0 0 1 8 5zm3 .5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 1 0z" />
-                </svg>clear</button>
+            <button class="btn btn-outline-secondary clear-button" type="button" id="clear_search">&lt; CLEAR
+                &gt;</button>
         </div>
     </div>
 
+
     <div class="container" id="search-results-container">
+        <div class="d-flex justify-content-center">
+        </div>
     </div>
 
+
     <template id="search_result">
-        <div class="card mb-2 shadow-sm result-card" id="search_card">
+        <div class="container result-card mb-4">
+            <div class="row">
+                <div class="col">
+                    <h7><a id="title_link" href="/"></a></h7>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col url-parts" id="url_parts"></div>
+            </div>
+            <div class="row">
+                <div class="col" id="result_text">
+                </div>
+            </div>
+        </div>
+    </template>
+
+
+    <!-- teamplte::search_result
+    <template id="search_result">
+        <div class="card mb-2 result-card" id="search_card">
             <div class="card-body">
                 <h7 class="card-title"><img id="favicon" class="mx-2" width=16 height="16" src=""><a id="title_link"
                         href="/"></a></h7>
@@ -178,12 +191,15 @@
             </div>
         </div>
     </template>
+    -->
 
+
+    <!-- status bar -->
     <div class="fixed-bottom">
-        <div class="d-flex flex-row status-row p-0 m-0">
-            <div class="col status-left"></div>
-            <div class="col status-mid flex-fill"></div>
-            <div class="col status-right"></div>
+        <div class="d-flex flex-row wm-status-row p-0 m-0">
+            <div class="col wm-status-left"></div>
+            <div class="col wm-status-mid flex-fill"></div>
+            <div class="col wm-status-right"></div>
         </div>
     </div>
 
@@ -194,7 +210,7 @@
 
     <template id="chatgpt_sandbox">
         <div class="d-flex justify-content-center">
-            <div id="chat_msg" class="border rounded border-secondary w-75 p-2 mb-1">
+            <div id="chat_msg" class="border result-card border-secondary w-75 p-2 mb-1">
             </div>
         </div>
     </template>

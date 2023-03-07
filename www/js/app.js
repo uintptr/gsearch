@@ -6,9 +6,9 @@ export { }
 
 const HIGH_VALUE_DOMAINS = {
     "wikipedia.org": 1,
-    "github.com": 1,
-    "imdb.com": 1,
-    "stackoverflow.com": 1,
+    "github.com": 2,
+    "imdb.com": 3,
+    "stackoverflow.com": 3,
 }
 
 /**
@@ -52,16 +52,6 @@ function new_search_card(item) {
         if (body != null && body instanceof HTMLElement) {
             body.innerHTML = item.htmlSnippet
         }
-
-        /*
-        result.addEventListener("mouseenter", function () {
-            this.classList.add("bg-body-tertiary")
-        })
-
-        result.addEventListener("mouseleave", function () {
-            this.classList.remove("bg-body-tertiary")
-        })
-        */
     }
 
     return result
@@ -74,19 +64,22 @@ function new_search_card(item) {
  */
 function promote_results(results) {
 
-    let promoted = []
+    var idx = 100
+
+    for (const r of results) {
+        r.score = idx
+        idx++
+    }
 
     for (let k in HIGH_VALUE_DOMAINS) {
         for (var i = 0; i < results.length; i++) {
             if (results[i].link.includes(k)) {
-                console.log("promoting " + results[i].link)
-                promoted.push(results[i])
-                results.splice(i, 1)
+                results[i].score = HIGH_VALUE_DOMAINS[k]
             }
         }
     }
 
-    return promoted.concat(results)
+    return results.sort((a, b) => a.score - b.score)
 }
 
 
@@ -100,7 +93,7 @@ async function issue_query(container, worker, q, observer, start_idx = 1) {
 
     let url = "/api/search?q=" + q
 
-    //worker.postMessage(["chat", q])
+    worker.postMessage(["chat", q])
 
     let results = await utils.fetch_as_json(url)
 

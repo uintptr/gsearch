@@ -29,7 +29,6 @@
             padding: 4px;
         }
 
-
         .wm-title-row {
             background: black;
             max-height: 22px;
@@ -105,11 +104,21 @@
             border-width: 1px;
         }
 
+
+        .search-container {
+            box-shadow: 12px 12px 0px 1px rgb(0, 0, 0);
+            background-color: #e5e5e5;
+        }
+
         .search-input {
-            background-color: black !important;
-            color: white !important;
-            border-radius: 0 !important;
-            border-top-color: black !important;
+            outline: none !important;
+            border-width: 1px !important;
+            font-family: monospace;
+            border-left-color: black;
+            border-right-color: white;
+            border-top-color: black;
+            border-bottom-color: white;
+            width: 90%;
         }
 
         .clear-button {
@@ -119,17 +128,22 @@
         .result-card {
             background-color: #e5e5e5;
             color: black;
-            font-family:Arial, Helvetica, sans-serif
+            font-family: Arial, Helvetica, sans-serif;
+            box-shadow: 10px 10px 0px 1px rgb(0, 0, 0);
         }
 
         .url-parts {
             font-size: xx-small;
             font-family: monospace;
         }
+
+        body {
+            background-color: #0000ee;
+        }
     </style>
 </head>
 
-<body class="p-0 m-0 border-0" style="background-color: #0000ee">
+<body class="p-0 m-0 border-0">
 
     <!-- wmaker title bar -->
     <div class="d-flex flex-row wm-title-row p-0 m-0">
@@ -144,21 +158,18 @@
         </div>
     </div>
 
-    <div class="container mt-2 mb-2" id="search_bar_container">
-        <div class="input-group">
-            <input id="search_bar" autocapitalize="off" class="form-control search-input" type="search"
-                placeholder="Search..." aria-label="Search" autofocus>
-            <button class="btn btn-outline-secondary clear-button" type="button" id="clear_search">&lt; CLEAR
-                &gt;</button>
-        </div>
+    <div class="container w-75 search-container p-2 mb-4 mt-4 text-center " id="search_bar_container">
+
+        <!--
+            !!!!!!!!!!
+        -->
+
+        <input id="search_bar" class="search-input mb-2" autocapitalize="off" placeholder="Search..." autofocus>
+
     </div>
 
-
-    <div class="container" id="search-results-container">
-        <div class="d-flex justify-content-center">
-        </div>
+    <div class="container p-2 w-75 mt-2" id="search-results-container">
     </div>
-
 
     <template id="search_result">
         <div class="container result-card mb-4">
@@ -176,22 +187,6 @@
             </div>
         </div>
     </template>
-
-
-    <!-- teamplte::search_result
-    <template id="search_result">
-        <div class="card mb-2 result-card" id="search_card">
-            <div class="card-body">
-                <h7 class="card-title"><img id="favicon" class="mx-2" width=16 height="16" src=""><a id="title_link"
-                        href="/"></a></h7>
-                <div class="container-flex">
-                    <p id="url_parts" class="xxsmall-text font-monospace text-truncate"></p>
-                    <p class="small-text card-text text-wrap" id="result_text"></p>
-                </div>
-            </div>
-        </div>
-    </template>
-    -->
 
 
     <!-- status bar -->

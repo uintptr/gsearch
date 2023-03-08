@@ -93,7 +93,7 @@ async function issue_query(container, worker, q, observer, start_idx = 1) {
 
     let url = "/api/search?q=" + q
 
-    worker.postMessage(["chat", q])
+    //worker.postMessage(["chat", q])
 
     let results = await utils.fetch_as_json(url)
 
@@ -271,11 +271,13 @@ function init_search_bar(observer, worker, q) {
 
     const sb_container = document.getElementById("search_bar_container")
 
+    /*
     if (sb_container != null && sb_container instanceof HTMLElement) {
         if (true == utils.isMobile()) {
             sb_container.classList.add("fixed-bottom")
         }
     }
+    */
 }
 
 /**

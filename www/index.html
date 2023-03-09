@@ -108,6 +108,9 @@
         .search-container {
             box-shadow: 12px 12px 0px 1px rgb(0, 0, 0);
             background-color: #e5e5e5;
+            color: black;
+            font-weight: 100;
+            font-family: monospace;
         }
 
         .search-input {
@@ -118,11 +121,20 @@
             border-right-color: white;
             border-top-color: black;
             border-bottom-color: white;
-            width: 90%;
+            border-radius: 0;
+            width: 100%
         }
 
-        .clear-button {
-            color: yellow
+        .dialog-container {
+            border-style: solid;
+            border-color: red;
+            padding: 10px;
+            margin: 1px;
+            border-width: 1px;
+            border-top-color: white;
+            border-left-color: white;
+            border-right-color: black;
+            border-bottom-color: black;
         }
 
         .result-card {
@@ -158,31 +170,38 @@
         </div>
     </div>
 
-    <div class="container w-75 search-container p-2 mb-4 mt-4 text-center " id="search_bar_container">
-
-        <!--
-            !!!!!!!!!!
-        -->
-
-        <input id="search_bar" class="search-input mb-2" autocapitalize="off" placeholder="Search..." autofocus>
-
+    <!--
+        !!!!!!!!!!
+    -->
+    <div class="container w-75 search-container p-1 mb-4 mt-4 text-center" id="search_bar_container">
+        <div class="container dialog-container">
+            <div class="row m-0 mb-1 p-0">
+                Search:
+            </div>
+            <div class="row m-0 p-0">
+                <input id="search_bar" class="search-input m-0 p-0" autocapitalize="off" autofocus>
+            </div>
+        </div>
     </div>
+
 
     <div class="container p-2 w-75 mt-2" id="search-results-container">
     </div>
 
     <template id="search_result">
-        <div class="container result-card mb-4">
-            <div class="row">
-                <div class="col">
-                    <h7><a id="title_link" href="/"></a></h7>
+        <div class="container result-card p-1 mt-4 mb-4">
+            <div class="container dialog-container">
+                <div class="row">
+                    <div class="col">
+                        <h7><a id="title_link" href="/"></a></h7>
+                    </div>
                 </div>
-            </div>
-            <div class="row">
-                <div class="col url-parts" id="url_parts"></div>
-            </div>
-            <div class="row">
-                <div class="col" id="result_text">
+                <div class="row">
+                    <div class="col url-parts" id="url_parts"></div>
+                </div>
+                <div class="row">
+                    <div class="col" id="result_text">
+                    </div>
                 </div>
             </div>
         </div>

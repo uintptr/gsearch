@@ -6,9 +6,10 @@ export { }
 
 const HIGH_VALUE_DOMAINS = {
     "wikipedia.org": 1,
-    "github.com": 2,
-    "imdb.com": 3,
-    "stackoverflow.com": 3,
+    "python.org": 2,
+    "github.com": 3,
+    "imdb.com": 4,
+    "stackoverflow.com": 5,
 }
 
 /**
@@ -93,7 +94,7 @@ async function issue_query(container, worker, q, observer, start_idx = 1) {
 
     let url = "/api/search?q=" + q
 
-    //worker.postMessage(["chat", q])
+    worker.postMessage(["chat", q])
 
     let results = await utils.fetch_as_json(url)
 
@@ -268,16 +269,6 @@ function init_search_bar(observer, worker, q) {
         }
 
     }
-
-    const sb_container = document.getElementById("search_bar_container")
-
-    /*
-    if (sb_container != null && sb_container instanceof HTMLElement) {
-        if (true == utils.isMobile()) {
-            sb_container.classList.add("fixed-bottom")
-        }
-    }
-    */
 }
 
 /**

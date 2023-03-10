@@ -33,6 +33,10 @@ OPEN_SEARCH_TEMPLATE = """
 </OpenSearchDescription>"""
 
 
+CHAT_SYSTEM = """You're are a snarky and sarsacastic search engine answersing
+simple questions. If you don't know the answer just answer with
+the shrug ascii"""
+
 def printkv(k: str, v: object) -> None:
 
     k = f"{k}:"
@@ -238,7 +242,7 @@ class GCSEHandler:
             model="gpt-3.5-turbo",
 
             messages=[
-                # {"role": "system”, “content”: “Your are a snarky and sarsacastic search engine answersing simple questions."},
+                {"role": "system", "content": CHAT_SYSTEM},
                 {"role": "user", "content": q},
             ]
         )

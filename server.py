@@ -37,6 +37,7 @@ CHAT_SYSTEM = """You're are a snarky and sarsacastic search engine answersing
 simple questions. If you don't know the answer just answer with
 the shrug ascii"""
 
+
 def printkv(k: str, v: object) -> None:
 
     k = f"{k}:"
@@ -141,18 +142,18 @@ class GCSEHandler:
         data = b''
         attempts = 0
         replied = False
+        client = None
 
         while (False == replied and attempts < max_attempts):
 
-            client = await self._pop_client_connection()
-
             try:
-                resp = await client.get(url)
+                client = await self._pop_client_connection()
 
-                replied = True
+                resp = await client.get(url)
 
                 if (resp.status >= 200 and resp.status < 300):
                     data = await resp.read_all()
+                    replied = True
                 else:
                     print(f"{url} returned {resp.status}")
 
@@ -163,10 +164,14 @@ class GCSEHandler:
             except Exception as e:
                 print(f"Exception: {e}")
             finally:
-                if (True == replied):
-                    await self._return_client_connection(client)
-                else:
-                    await client.close()
+                if (client is not None):
+                    if (True == replied):
+                        await self._return_client_connection(client)
+                    else:
+                        try:
+                            await client.close()
+                        except Exception as e:
+                            print(f"Exception: {e}")
 
             attempts += 1
         return data

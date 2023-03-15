@@ -1,5 +1,13 @@
 {
-    "api_key": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
-    "search_engine_id": "000000000000000000",
-    "cse_url":"https://www.googleapis.com/customsearch/v1"
+    "google": {
+        "key": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk",
+        "cx": "00000000000000000",
+        "url": "https://www.googleapis.com/customsearch/v1",
+        "geo": "ca"
+    },
+    "openai": {
+        "url": "https://api.openai.com/v1/chat/completions",
+        "key": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk",
+        "system": "You're are a snarky and sarsacastic search engine answersing simple questions. If you don't know the answer just answer with fitting emoji"
+    }
 }

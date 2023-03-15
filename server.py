@@ -10,12 +10,6 @@ import urllib.parse
 from typing import Dict, List, Optional
 from http import HTTPStatus
 
-try:
-    import openai
-    have_openai = True
-except ImportError:
-    have_openai = False
-
 from ahttp.ahttp import AsyncHttpRequest, AsyncHttpServer, AsyncHttpClient
 
 DEF_CACHE_TIMEOUT = (1 * (60 * 60))
@@ -33,91 +27,22 @@ OPEN_SEARCH_TEMPLATE = """
 </OpenSearchDescription>"""
 
 
-CHAT_SYSTEM = """You're are a snarky and sarsacastic search engine answersing
-simple questions. If you don't know the answer just answer with
-the shrug ascii"""
-
-
 def printkv(k: str, v: object) -> None:
 
     k = f"{k}:"
     print(f"    {k:<25}{v}")
 
 
-class FavIconCache:
-    def __init__(self) -> None:
-        script_root = os.path.dirname(os.path.abspath(sys.argv[0]))
-
-        self.favicon_dir = os.path.join(script_root, "favicon")
-
-        if (not os.path.exists(self.favicon_dir)):
-            os.makedirs(self.favicon_dir)
-
-        default_favicon = os.path.join(script_root, "www", "default.ico")
-
-        self.default = b""
-
-        if (os.path.exists(default_favicon)):
-            with open(default_favicon, "rb") as f:
-                self.default = f.read()
-
-    def get_default(self) -> Optional[bytes]:
-        return self.default
-
-    def get(self, name: str) -> Optional[bytes]:
-
-        file_path = os.path.join(self.favicon_dir, name)
-
-        if (os.path.exists(file_path)):
-            with open(file_path, "rb") as f:
-                return f.read()
-
-        return None
-
-    def set(self, name: str, data: bytes) -> None:
-
-        file_path = os.path.join(self.favicon_dir, name)
-
-        with open(file_path, "wb") as f:
-            f.write(data)
-
-
-class GCSEHandler:
-    def __init__(self, task_count: int = 1) -> None:
-        script_root = os.path.dirname(os.path.abspath(sys.argv[0]))
-        self.www_root = os.path.join(script_root, "www")
-
-        self.done = False
-        self.task_count = task_count
-
-        self.config = self._load_config()
-
-        self.server_url = self.config["cse_url"]
-
-        api_key = self.config["api_key"]
-        cx = self.config["search_engine_id"]
-
-        self.base_url = f"/customsearch/v1?key={api_key}"
-        self.base_url += f"&cx={cx}"
-
-        if ("openai_key" in self.config):
-            openai.api_key = self.config["openai_key"]
-        else:
-            have_openai = False
-
-        self.favicon_cache_lock = asyncio.Lock()
-        self.favicon_cache = FavIconCache()
-
+class ClientRequestHandler:
+    def __init__(self, url: str, method: str = "GET") -> None:
         self.connections_lock = asyncio.Lock()
         self.connections: List[AsyncHttpClient] = []
+        self.url = url
 
-    def _load_config(self) -> Dict[str, str]:
-
-        script_root = os.path.dirname(os.path.abspath(sys.argv[0]))
-        config_file = os.path.join(script_root, "config", "config.json")
-
-        with open(config_file) as f:
-            return json.load(f)
+        if ("GET" == method):
+            self.is_get = True
+        else:
+            self.is_get = False
 
     async def _pop_client_connection(self) -> AsyncHttpClient:
 
@@ -125,7 +50,7 @@ class GCSEHandler:
             if (len(self.connections) > 0):
                 return self.connections.pop()
             else:
-                client = AsyncHttpClient(self.server_url)
+                client = AsyncHttpClient(self.url)
                 await client.connect()
                 return client
 
@@ -134,12 +59,31 @@ class GCSEHandler:
         async with self.connections_lock:
             self.connections.append(client)
 
-    async def _issue_request(self, q: str, max_attempts: int = 5) -> bytes:
+    async def __aenter__(self) -> 'ClientRequestHandler':
+        return self
 
-        encoded_q = urllib.parse.quote(q)
-        url = f"{self.base_url}&q={encoded_q}&gl=ca"
+    async def __aexit__(self, type, value, traceback) -> None:
+        await self.close()
 
-        data = b''
+    ############################################################################
+    # PUBLIC
+    ############################################################################
+    async def issue_request(self, params: Dict[str, str] = {}, headers: Dict[str, str] = {},  data: bytes = b'', max_attempts: int = 5) -> bytes:
+
+        url = self.url
+
+        count = 0
+        for k in params.keys():
+            v = urllib.parse.quote(params[k])
+
+            if (0 == count):
+                url += f"?{k}={v}"
+            else:
+                url += f"&{k}={v}"
+
+            count += 1
+
+        resp_data = b''
         attempts = 0
         replied = False
         client = None
@@ -149,10 +93,16 @@ class GCSEHandler:
             try:
                 client = await self._pop_client_connection()
 
-                resp = await client.get(url)
+                for k in headers.keys():
+                    client.add_header(k, headers[k])
+
+                if (True == self.is_get):
+                    resp = await client.get(url)
+                else:
+                    resp = await client.post(url, data=data)
 
                 if (resp.status >= 200 and resp.status < 300):
-                    data = await resp.read_all()
+                    resp_data = await resp.read_all()
                     replied = True
                 else:
                     print(f"{url} returned {resp.status}")
@@ -174,13 +124,92 @@ class GCSEHandler:
                             print(f"Exception: {e}")
 
             attempts += 1
-        return data
+        return resp_data
+
+    async def close(self) -> None:
+        while self.connections:
+            c = self.connections.pop()
+            await c.close()
+
+
+class ChatRequestHandler(ClientRequestHandler):
+
+    def __init__(self, url: str, key: str, system: str, temperature: float = 0.7):
+        self.key = key
+        self.system = system
+        self.temperature = temperature
+        super().__init__(url, method="POST")
+
+    async def issue_request(self, message: str) -> bytes:
+
+        headers = {"Content-Type": "application/json",
+                   "Authorization": f"Bearer {self.key}"}
+
+        messages = [
+            {"role": "system", "content": self.system},
+            {"role": "user", "content": message}
+        ]
+
+        data = {"model": "gpt-3.5-turbo",
+                "messages": messages,
+                "temperature": self.temperature}
+
+        data = json.dumps(data).encode("utf-8")
+
+        return await super().issue_request(headers=headers, data=data)
+
+
+class GoogleRequestHandler(ClientRequestHandler):
+
+    def __init__(self, url: str, key: str, cx: str, geo: str = "ca"):
+        self.key = key
+        self.cx = cx
+        self.gl = geo
+        super().__init__(url)
+
+    async def issue_request(self, q: str) -> bytes:
+
+        params = {"key": self.key,
+                  "cx": self.cx,
+                  "gl": self.gl,
+                  "q": q}
+
+        return await super().issue_request(params)
+
+
+class GCSEHandler:
+    def __init__(self, task_count: int = 1) -> None:
+        script_root = os.path.dirname(os.path.abspath(sys.argv[0]))
+        self.www_root = os.path.join(script_root, "www")
+
+        self.config = self._load_config()
+
+        g = self.config["google"]
+
+        self.google_request = GoogleRequestHandler(g["url"],
+                                                   g["key"],
+                                                   g["cx"],
+                                                   g["geo"])
+
+        chat = self.config["openai"]
+
+        self.chat_request = ChatRequestHandler(chat["url"],
+                                               chat["key"],
+                                               chat["system"])
+
+    def _load_config(self) -> Dict[str, Dict[str, str]]:
+
+        script_root = os.path.dirname(os.path.abspath(sys.argv[0]))
+        config_file = os.path.join(script_root, "config", "config.json")
+
+        with open(config_file) as f:
+            return json.load(f)
 
     async def __aenter__(self) -> 'GCSEHandler':
         return self
 
     async def __aexit__(self, type, value, traceback) -> None:
-        pass
+        await self.google_request.close()
 
     def _gzipped(self, data: bytes) -> bool:
         return (data != b'' and data[0] == 0x1f and data[1] == 0x8b)
@@ -228,32 +257,30 @@ class GCSEHandler:
             await req.send_file("tests/test.json")
             return
 
-        data = await self._issue_request(q)
+        data = await self.google_request.issue_request(q)
 
         if (data != b''):
             req.add_header("Content-Type", "application/json")
-
             await req.send_data(data)
         else:
             req.set_status(HTTPStatus.NOT_FOUND)
 
     async def api_chat(self, req: AsyncHttpRequest, q: str) -> None:
 
-        if (False == have_openai):
-            req.set_status(HTTPStatus.NOT_IMPLEMENTED)
-            return
+        data = await self.chat_request.issue_request(q)
 
-        completion = await openai.ChatCompletion.acreate(
-            model="gpt-3.5-turbo",
+        completion = json.loads(data.decode("utf-8"))
 
-            messages=[
-                {"role": "system", "content": CHAT_SYSTEM},
-                {"role": "user", "content": q},
-            ]
-        )
+        if ("choices" in completion):
+            if ("message" in completion["choices"][0]):
+                message = completion["choices"][0]["message"]
+                await req.send_as_json(message)
+            else:
+                req.set_status(HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+        else:
+            req.set_status(HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
 
-        response_dict = completion.choices[0].message.to_dict()  # type: ignore
-        await req.send_as_json(response_dict)
+        return
 
     async def opensearch(self, req: AsyncHttpRequest) -> None:
 
@@ -261,41 +288,6 @@ class GCSEHandler:
 
         req.set_mime_type("application/xml")
         await req.send_as_text(opensearch)
-
-    async def api_favicon(self, req: AsyncHttpRequest, url: str) -> None:
-
-        q = urllib.parse.urlparse(url)
-
-        if (q.hostname is None):
-            req.set_status(HTTPStatus.BAD_REQUEST)
-            return
-
-        async with self.favicon_cache_lock:
-            data = self.favicon_cache.get(q.hostname)
-
-        if (data is None):
-            # not cached
-            data = await self._favicon_get(url)
-
-            if (data is not None and data != b'' and data[0] == 0x3c and data[1] == 0x21):
-                # likely html...
-                data = None
-
-            if (data is not None):
-                async with self.favicon_cache_lock:
-                    self.favicon_cache.set(q.hostname, data)
-            else:
-                data = self.favicon_cache.get_default()
-
-        if (data is not None):
-            req.add_header("Content-Type", "image/x-icon")
-
-            if (self._gzipped(data)):
-                req.add_header("content-encoding", "gzip")
-
-            await req.send_data(data)
-        else:
-            req.set_status(HTTPStatus.NOT_FOUND)
 
 
 async def run_server(args) -> None:
@@ -318,7 +310,6 @@ async def run_server(args) -> None:
             server.get("/search", handler.search, DEF_CACHE_TIMEOUT),
             server.get("/opensearch.xml", handler.opensearch),
             server.get("/api/search", handler.api_search, DEF_CACHE_TIMEOUT),
-            server.get("/api/favicon", handler.api_favicon, DEF_CACHE_TIMEOUT),
             server.get("/api/chat", handler.api_chat, DEF_CACHE_TIMEOUT),
         ]
 

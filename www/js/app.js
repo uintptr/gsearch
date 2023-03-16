@@ -8,6 +8,7 @@ const HIGH_VALUE_DOMAINS = {
     "wikipedia.org": 1,
     "python.org": 2,
     "github.com": 3,
+    "apple.com": 3,
     "imdb.com": 4,
     "stackoverflow.com": 5,
 }
@@ -135,6 +136,7 @@ async function issue_query(container, worker, q, observer, start_idx = 1) {
  */
 function update_url_bar(title, url) {
     window.history.pushState({ page: url }, title, url);
+    document.title = title
 
 }
 
@@ -147,7 +149,7 @@ function update_url_bar(title, url) {
 async function onenter_cb(container, worker, search_input, observer) {
 
     const newUrl = '/search?q=' + search_input.value
-    const pageTitle = 'Search Results for ' + search_input.value
+    const pageTitle = 'Results for ' + search_input.value
 
     update_url_bar(pageTitle, newUrl)
 

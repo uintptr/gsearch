@@ -134,7 +134,7 @@ class ClientRequestHandler:
 
 class ChatRequestHandler(ClientRequestHandler):
 
-    def __init__(self, url: str, key: str, system: str, temperature: float = 0.7):
+    def __init__(self, url: str, key: str, system: str, temperature: float = 0.3):
         self.key = key
         self.system = system
         self.temperature = temperature

@@ -95,7 +95,7 @@ async function issue_query(container, worker, q, observer, start_idx = 1) {
 
     let url = "/api/search?q=" + q
 
-    worker.postMessage(["chat", q])
+    //worker.postMessage(["chat", q])
 
     let results = await utils.fetch_as_json(url)
 
@@ -222,6 +222,7 @@ function init_observer() {
     return observer
 }
 
+
 /**
  * @param {IntersectionObserver} observer
  * @param {Worker} worker
@@ -233,8 +234,26 @@ function init_search_bar(observer, worker, q) {
 
     if (container != null && container instanceof HTMLElement) {
         const searchBar = document.getElementById('search_bar');
+        const searchButton = document.getElementById('search_button');
+        const chatButton = document.getElementById('chat_button');
 
         if (searchBar != null && searchBar instanceof HTMLInputElement) {
+
+            if (chatButton != null && chatButton instanceof HTMLButtonElement) {
+                chatButton.addEventListener("click", function (e) {
+                    if (searchBar.value.length > 0) {
+                        worker.postMessage(["chat", searchBar.value])
+                    }
+                })
+            }
+
+            if (searchButton != null && searchButton instanceof HTMLButtonElement) {
+                searchButton.addEventListener("click", function (e) {
+                    if (searchBar.value.length > 0) {
+                        onenter_cb(container, worker, searchBar, observer)
+                    }
+                })
+            }
 
             searchBar.addEventListener("keyup", function (e) {
                 if (e.key == "Enter") {

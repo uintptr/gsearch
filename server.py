@@ -134,10 +134,11 @@ class ClientRequestHandler:
 
 class ChatRequestHandler(ClientRequestHandler):
 
-    def __init__(self, url: str, key: str, system: str, temperature: float = 0.3):
+    def __init__(self, url: str, key: str, model: str, system: str, temperature: float = 0.3):
         self.key = key
         self.system = system
         self.temperature = temperature
+        self.model = model
         super().__init__(url, method="POST")
 
     async def issue_request(self, message: str) -> bytes:
@@ -150,7 +151,7 @@ class ChatRequestHandler(ClientRequestHandler):
             {"role": "user", "content": message}
         ]
 
-        data = {"model": "gpt-3.5-turbo",
+        data = {"model": self.model,
                 "messages": messages,
                 "temperature": self.temperature}
 
@@ -193,8 +194,14 @@ class GCSEHandler:
 
         chat = self.config["openai"]
 
+        if("model" in chat):
+            model = chat["model"]
+        else:
+            model = "gpt-3.5-turbo"
+
         self.chat_request = ChatRequestHandler(chat["url"],
                                                chat["key"],
+                                               model,
                                                chat["system"])
 
     def _load_config(self) -> Dict[str, Dict[str, str]]:

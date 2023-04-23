@@ -151,6 +151,12 @@
         body {
             background-color: #0000ee;
         }
+
+        .dialog-button:hover
+        {
+            background-color: #0000ee;
+            color: yellow;
+        }
     </style>
 </head>
 
@@ -170,7 +176,7 @@
     </div>
 
     <!--
-        !!!!!!!!!!
+        SEARCH BAR
     -->
     <div class="container w-75 search-container p-1 mb-4 mt-4 text-center" id="search_bar_container">
         <div class="container dialog-container">
@@ -180,13 +186,27 @@
             <div class="row m-0 p-0">
                 <input id="search_bar" class="search-input m-0 p-0" autocapitalize="off" autofocus>
             </div>
+            <div class="row mt-2 p-0 justify-content-center">
+                <div class="col">
+                    <button type="button" id="search_button" class="btn dialog-button">&ltSearch&gt</button>
+                </div>
+                <div class="col">
+                    <button type="button" id="chat_button" class="btn dialog-button">&ltChatGPT&gt</button>
+                </div>
+            </div>
         </div>
     </div>
 
 
+    <!--
+        SEARCH RESULTS CONTAINER
+    -->
     <div class="container p-2 w-75 mt-2" id="search-results-container">
     </div>
 
+    <!--
+        SEARCH RESULTS ENTRY
+    -->
     <template id="search_result">
         <div class="container result-card p-1 mt-4 mb-4">
             <div class="container dialog-container">
@@ -206,8 +226,9 @@
         </div>
     </template>
 
-
-    <!-- status bar -->
+    <!--
+        STATUS BAR
+    -->
     <div class="fixed-bottom">
         <div class="d-flex flex-row wm-status-row p-0 m-0">
             <div class="col wm-status-left"></div>
@@ -216,11 +237,17 @@
         </div>
     </div>
 
+    <!--
+        SPELLING
+    -->
     <template id="alert_spelling">
         <div class="alert alert-secondary" role="alert">
         </div>
     </template>
 
+    <!--
+        CHAT TEMPLATE
+    -->
     <template id="chatgpt_sandbox">
         <div class="container result-card p-1 mt-4 mb-4">
             <div class="container dialog-container">

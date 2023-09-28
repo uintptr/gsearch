@@ -15,11 +15,12 @@ const HIGH_VALUE_DOMAINS = {
 
 /**
  * @param {any} item
+ * @param {string} name
  * @returns {HTMLElement | null}
  */
-function new_search_card(item) {
+function new_search_card(item, name) {
 
-    const result = utils.new_template("search_result")
+    const result = utils.new_template(name)
 
     if (result != null) {
 
@@ -77,6 +78,7 @@ function promote_results(results) {
         for (var i = 0; i < results.length; i++) {
             if (results[i].link.includes(k)) {
                 results[i].score = HIGH_VALUE_DOMAINS[k]
+                results[i].promoted = true
             }
         }
     }
@@ -115,9 +117,15 @@ async function issue_query(container, worker, q, observer, start_idx = 1) {
 
         for (const item of promoted_results) {
 
-            let card = new_search_card(item)
+            let card = new_search_card(item, "search_result")
 
             if (card != null && card instanceof HTMLElement) {
+
+
+                if (item.promoted == true) {
+                    card.classList.remove("result-card")
+                    card.classList.add("result-card-promoted")
+                }
 
                 card.setAttribute("idx", start_idx.toString())
 

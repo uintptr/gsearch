@@ -26,14 +26,20 @@ function new_search_card(item, name) {
 
         const title = result.querySelector("#title_link")
 
+        let link = item.link
+
         if (title != null && title instanceof HTMLElement) {
             title.innerHTML = item.title
 
-            title.setAttribute("href", item.link)
+            if (link.includes("www.reddit.com")) {
+                link = link.replace(/www/, "old");
+            }
+
+            title.setAttribute("href", link)
         }
 
 
-        let url = new URL(item.link)
+        let url = new URL(link)
 
         // decomposed URL
         let components = url.pathname.split("/")

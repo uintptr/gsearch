@@ -10,6 +10,8 @@ import urllib.parse
 from typing import Dict, List, Optional
 from http import HTTPStatus
 
+from jsonconfig import JSONConfig
+
 from ahttp.ahttp import AsyncHttpRequest, AsyncHttpServer, AsyncHttpClient
 
 DEF_CACHE_TIMEOUT = (1 * (60 * 60))
@@ -62,7 +64,7 @@ class ClientRequestHandler:
     async def __aenter__(self) -> 'ClientRequestHandler':
         return self
 
-    async def __aexit__(self, type, value, traceback) -> None:
+    async def __aexit__(self, type, value, traceback) -> None:  # type: ignore
         await self.close()
 
     ############################################################################
@@ -132,16 +134,20 @@ class ClientRequestHandler:
             await c.close()
 
 
-class ChatRequestHandler(ClientRequestHandler):
+class AI(ClientRequestHandler):
 
-    def __init__(self, url: str, key: str, model: str, system: str, temperature: float = 0.3):
-        self.key = key
-        self.system = system
-        self.temperature = temperature
-        self.model = model
+    def __init__(self, config: JSONConfig) -> None:
+
+        self.key = config.get("/openai/key")
+        self.system = config.get("/openai/system")
+        self.temperature = config.get_float("/openai/temperature", 0.7)
+        self.model = config.get("/openai/model", "gpt-3.5-turbo")
+
+        url = config.get("/openai/url")
+
         super().__init__(url, method="POST")
 
-    async def issue_request(self, message: str) -> bytes:
+    async def do_request(self, message: str) -> bytes:
 
         headers = {"Content-Type": "application/json",
                    "Authorization": f"Bearer {self.key}"}
@@ -159,6 +165,56 @@ class ChatRequestHandler(ClientRequestHandler):
 
         return await super().issue_request(headers=headers, data=data)
 
+    async def chat(self, message: str) -> str | None:
+
+        data = await self.do_request(message)
+
+        completion = json.loads(data.decode("utf-8"))
+
+        if ("choices" in completion):
+            if ("message" in completion["choices"][0]):
+                message = completion["choices"][0]["message"]
+
+                if "content" in message:
+                    return message["content"]  # type: ignore
+
+        return None
+
+
+class RedditCache:
+
+    def __init__(self, config: JSONConfig, ai: AI) -> None:
+
+        self.query_cache = {}
+        self.query_cache_lock = asyncio.Lock()
+
+        self.config = config
+        self.ai = ai
+
+    async def get_sub_from_string(self, string: str) -> str | None:
+
+        async with self.query_cache_lock:
+            sub = self.config.get_str(f"/reddit/cache/{string}", "")
+
+            if "" != sub:
+                return sub
+
+        # we don't have a cache for this yet
+
+        q = f"what is the sub reddit for {string}."
+        q += " Just return the name of the subreddit starting with /r/"
+        q += " and nothing else"
+
+        r = await self.ai.chat(q)
+
+        if r is not None:
+            async with self.query_cache_lock:
+                self.config.set(f"/reddit/cache/{string}", r)
+
+            return r
+
+        return None
+
 
 class GoogleRequestHandler(ClientRequestHandler):
 
@@ -168,7 +224,7 @@ class GoogleRequestHandler(ClientRequestHandler):
         self.gl = geo
         super().__init__(url)
 
-    async def issue_request(self, q: str) -> bytes:
+    async def do_request(self, q: str) -> bytes:
 
         params = {"key": self.key,
                   "cx": self.cx,
@@ -179,49 +235,35 @@ class GoogleRequestHandler(ClientRequestHandler):
 
 
 class GCSEHandler:
-    def __init__(self, task_count: int = 1) -> None:
+    def __init__(self) -> None:
         script_root = os.path.dirname(os.path.abspath(sys.argv[0]))
         self.www_root = os.path.join(script_root, "www")
 
-        self.config = self._load_config()
+        config_file = os.path.join(script_root, "config", "config.json")
 
-        g = self.config["google"]
+        config = JSONConfig(config_file)
+
+        g = config.get("/google")
 
         self.google_request = GoogleRequestHandler(g["url"],
                                                    g["key"],
                                                    g["cx"],
                                                    g["geo"])
 
-        chat = self.config["openai"]
+        self.ai = AI(config)
 
-        if("model" in chat):
-            model = chat["model"]
-        else:
-            model = "gpt-3.5-turbo"
-
-        self.chat_request = ChatRequestHandler(chat["url"],
-                                               chat["key"],
-                                               model,
-                                               chat["system"])
-
-    def _load_config(self) -> Dict[str, Dict[str, str]]:
-
-        script_root = os.path.dirname(os.path.abspath(sys.argv[0]))
-        config_file = os.path.join(script_root, "config", "config.json")
-
-        with open(config_file) as f:
-            return json.load(f)
+        self.reddit_cache = RedditCache(config, self.ai)
 
     async def __aenter__(self) -> 'GCSEHandler':
         return self
 
-    async def __aexit__(self, type, value, traceback) -> None:
+    async def __aexit__(self, _, value, traceback) -> None:  # type: ignore
         await self.google_request.close()
 
     def _gzipped(self, data: bytes) -> bool:
         return (data != b'' and data[0] == 0x1f and data[1] == 0x8b)
 
-    async def _favicon_get(self, url) -> Optional[bytes]:
+    async def _favicon_get(self, url: str) -> Optional[bytes]:
 
         q = urllib.parse.urlparse(url)
 
@@ -256,15 +298,29 @@ class GCSEHandler:
 
     async def search(self, req: AsyncHttpRequest, q: str) -> None:
 
+        sub: str | None = None
+
+        if q.startswith("r "):
+            sub = await self.reddit_cache.get_sub_from_string(q[2:])
+
+            if sub is not None:
+
+                sub_url = f"https://old.reddit.com{sub}"
+
+                req.add_header("Location", sub_url)
+                req.set_status(HTTPStatus.MOVED_PERMANENTLY)
+                await req.send_headers()
+                return
+
         await req.send_file(os.path.join(self.www_root, "index.html"))
 
     async def api_search(self, req: AsyncHttpRequest, q: str) -> None:
 
-        if (q == "test"):
+        if q == "test":
             await req.send_file("tests/test.json")
             return
 
-        data = await self.google_request.issue_request(q)
+        data = await self.google_request.do_request(q)
 
         if (data != b''):
             req.add_header("Content-Type", "application/json")
@@ -274,7 +330,7 @@ class GCSEHandler:
 
     async def api_chat(self, req: AsyncHttpRequest, q: str) -> None:
 
-        data = await self.chat_request.issue_request(q)
+        data = await self.ai.do_request(q)
 
         completion = json.loads(data.decode("utf-8"))
 
@@ -297,7 +353,7 @@ class GCSEHandler:
         await req.send_as_text(opensearch)
 
 
-async def run_server(args) -> None:
+async def run_server(addr: str, port: int, verbose: bool, disable_cache: bool) -> None:
 
     script_root = os.path.dirname(os.path.abspath(sys.argv[0]))
 
@@ -305,12 +361,12 @@ async def run_server(args) -> None:
 
     async with GCSEHandler() as handler:
 
-        server = AsyncHttpServer(args.addr,
-                                 args.port,
+        server = AsyncHttpServer(addr,
+                                 port,
                                  log_file=log_file,
-                                 verbose=args.verbose)
+                                 verbose=verbose)
 
-        if (True == args.disable_cache):
+        if (True == disable_cache):
             server.disable_caching()
 
         api_list = [
@@ -362,7 +418,10 @@ def main() -> int:
     printkv("Cache Disabled", args.disable_cache)
 
     try:
-        asyncio.run(run_server(args))
+        asyncio.run(run_server(args.addr,
+                               args.port,
+                               args.verbose,
+                               args.disable_cache))
         status = 0
     except FileNotFoundError as e:
         print(e)

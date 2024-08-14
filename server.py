@@ -7,7 +7,6 @@ import errno
 import argparse
 import asyncio
 import urllib.parse
-from typing import Dict, List, Optional
 from http import HTTPStatus
 
 from jsonconfig import JSONConfig
@@ -38,7 +37,7 @@ def printkv(k: str, v: object) -> None:
 class ClientRequestHandler:
     def __init__(self, url: str, method: str = "GET") -> None:
         self.connections_lock = asyncio.Lock()
-        self.connections: List[AsyncHttpClient] = []
+        self.connections: list[AsyncHttpClient] = []
         self.url = url
 
         if ("GET" == method):
@@ -70,7 +69,7 @@ class ClientRequestHandler:
     ############################################################################
     # PUBLIC
     ############################################################################
-    async def issue_request(self, params: Dict[str, str] = {}, headers: Dict[str, str] = {},  data: bytes = b'', max_attempts: int = 5) -> bytes:
+    async def issue_request(self, params: dict[str, str] = {}, headers: dict[str, str] = {},  data: bytes = b'', max_attempts: int = 5) -> bytes:
 
         url = self.url
 
@@ -218,11 +217,12 @@ class RedditCache:
 
 class GoogleRequestHandler(ClientRequestHandler):
 
-    def __init__(self, url: str, key: str, cx: str, geo: str = "ca"):
-        self.key = key
-        self.cx = cx
-        self.gl = geo
-        super().__init__(url)
+    def __init__(self, config: JSONConfig) -> None:
+
+        self.key = config.get("/google/key")
+        self.cx = config.get("/google/cx")
+        self.gl = config.get("/google/geo", "ca")
+        super().__init__(config.get("/google/url"))
 
     async def do_request(self, q: str) -> bytes:
 
@@ -243,15 +243,8 @@ class GCSEHandler:
 
         config = JSONConfig(config_file)
 
-        g = config.get("/google")
-
-        self.google_request = GoogleRequestHandler(g["url"],
-                                                   g["key"],
-                                                   g["cx"],
-                                                   g["geo"])
-
+        self.google_request = GoogleRequestHandler(config)
         self.ai = AI(config)
-
         self.reddit_cache = RedditCache(config, self.ai)
 
     async def __aenter__(self) -> 'GCSEHandler':
@@ -263,7 +256,7 @@ class GCSEHandler:
     def _gzipped(self, data: bytes) -> bool:
         return (data != b'' and data[0] == 0x1f and data[1] == 0x8b)
 
-    async def _favicon_get(self, url: str) -> Optional[bytes]:
+    async def _favicon_get(self, url: str) -> bytes | None:
 
         q = urllib.parse.urlparse(url)
 

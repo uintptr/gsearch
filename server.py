@@ -291,21 +291,22 @@ class GCSEHandler:
 
     async def search(self, req: AsyncHttpRequest, q: str) -> None:
 
-        sub: str | None = None
+        location: str | None = None
 
         if q.startswith("r "):
             sub = await self.reddit_cache.get_sub_from_string(q[2:])
-
             if sub is not None:
+                location = f"https://old.reddit.com{sub}"
+        elif q.startswith("g "):
+            q = q[2:]
+            location = f"https://google.com/search?q={q}"
 
-                sub_url = f"https://old.reddit.com{sub}"
-
-                req.add_header("Location", sub_url)
-                req.set_status(HTTPStatus.MOVED_PERMANENTLY)
-                await req.send_headers()
-                return
-
-        await req.send_file(os.path.join(self.www_root, "index.html"))
+        if location is not None:
+            req.add_header("Location", location)
+            req.set_status(HTTPStatus.MOVED_PERMANENTLY)
+            await req.send_headers()
+        else:
+            await req.send_file(os.path.join(self.www_root, "index.html"))
 
     async def api_search(self, req: AsyncHttpRequest, q: str) -> None:
 

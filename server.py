@@ -275,6 +275,20 @@ class GCSEHandler:
 
         return None
 
+    def __get_lucky_url(self, gcse_data: bytes) -> str | None:
+
+        gcse = json.loads(gcse_data.decode("utf-8"))
+
+        if "items" not in gcse:
+            return None
+
+        item = gcse["items"][0]
+
+        if "link" not in item:
+            return None
+
+        return item["link"]
+
     ############################################################################
     # PUBLIC
     ############################################################################
@@ -291,15 +305,25 @@ class GCSEHandler:
 
     async def search(self, req: AsyncHttpRequest, q: str) -> None:
 
-        location: str | None = None
+        location = None
 
         if q.startswith("r "):
+            # reddit
             sub = await self.reddit_cache.get_sub_from_string(q[2:])
             if sub is not None:
                 location = f"https://old.reddit.com{sub}"
         elif q.startswith("g "):
+            # google
             q = q[2:]
             location = f"https://google.com/search?q={q}"
+        elif q.startswith("i "):
+            # google images
+            q = q[2:]
+            location = f"https://www.google.com/search?q={q}&sclient=img"
+        elif q.startswith("l "):
+            # lucky
+            gcse_data = await self.google_request.do_request(q[2:])
+            location = self.__get_lucky_url(gcse_data)
 
         if location is not None:
             req.add_header("Location", location)

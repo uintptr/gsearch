@@ -319,7 +319,7 @@ class GCSEHandler:
         elif q.startswith("i "):
             # google images
             q = q[2:]
-            location = f"https://www.google.com/search?q={q}&sclient=img"
+            location = f"https://www.google.com/search?q={q}&tbm=isch"
         elif q.startswith("l "):
             # lucky
             gcse_data = await self.google_request.do_request(q[2:])

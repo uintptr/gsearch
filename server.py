@@ -274,7 +274,7 @@ def run_server(addr: str, port: int) -> None:
 
     app.add_routes(routes)
 
-    web.run_app(app, port=port, host=addr)  # type: ignore
+    web.run_app(app, port=port, host=addr, reuse_port=True)  # type: ignore
 
 
 def main() -> int:

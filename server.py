@@ -6,17 +6,14 @@ import json
 import errno
 import argparse
 import asyncio
-import urllib.parse
 from http import HTTPStatus
 
 import aiohttp
+from aiohttp import web
+
 from jsonconfig import JSONConfig
 
 
-from aiohttp import web
-
-
-DEF_CACHE_TIMEOUT = (1 * (60 * 60))
 DEF_PORT = 8080
 DEF_ADDR = "0.0.0.0"
 
@@ -274,7 +271,7 @@ def run_server(addr: str, port: int) -> None:
 
     app.add_routes(routes)
 
-    web.run_app(app, port=port, host=addr, reuse_port=True)  # type: ignore
+    web.run_app(app, port=port, host=addr, reuse_address=True)  # type: ignore
 
 
 def main() -> int:

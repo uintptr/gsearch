@@ -89,6 +89,8 @@ class RedditCache:
 
     async def get_sub_from_string(self, string: str) -> str | None:
 
+        string = string.lower()
+
         async with self.query_cache_lock:
             sub = self.config.get_str(f"/reddit/cache/{string}", "")
 

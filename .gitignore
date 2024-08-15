@@ -1,8 +1,5 @@
-/ahttp
 /.vscode
-/results.json
 /config/config.json
-/config/config_ok.json
 /cache
 /favicon
 /test.bin

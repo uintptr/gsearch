@@ -240,20 +240,22 @@ class GCSEHandler:
 
         completion = json.loads(data.decode("utf-8"))
 
-        if ("choices" in completion):
-            if ("message" in completion["choices"][0]):
-                message = completion["choices"][0]["message"]
-                return web.Response(text=json.dumps(message),
-                                    content_type="application/json")
-
+        if ("choices" not in completion):
             return web.Response(status=HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
 
-        return web.Response(status=HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+        choices = completion["choices"][0]
+
+        if "message" not in choices:
+            return web.Response(status=HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+
+        message = choices["message"]
+        return web.Response(text=json.dumps(message),
+                            content_type="application/json")
 
     async def opensearch(self, req: web.Request) -> web.Response:
 
-        opensearch = OPEN_SEARCH_TEMPLATE.replace("__HOST__", req.host)
-        return web.Response(text=opensearch, content_type="application/xml")
+        template = OPEN_SEARCH_TEMPLATE.replace("__HOST__", req.host)
+        return web.Response(text=template, content_type="application/xml")
 
 
 def run_server(addr: str, port: int) -> None:

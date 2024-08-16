@@ -203,6 +203,7 @@ class GCSEHandler:
             location = self.__get_lucky_url(gcse_data)
         elif q.startswith("a "):
             # amazon
+            q = q[2:]
             location = f"https://www.amazon.ca/s?k={q}"
 
         if location is not None:

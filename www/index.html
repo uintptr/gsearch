@@ -1,265 +1,104 @@
-<!doctype html>
-<html lang="en" data-bs-theme="dark">
+<!DOCTYPE html>
+<html lang="en">
 
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://getbootstrap.com/docs/5.3/assets/css/docs.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dark Themed Search Bar</title>
     <link rel="search" type="application/opensearchdescription+xml" title="GSearch" href="/opensearch.xml">
     <script src="/js/utils.js" type="module"></script>
-    <title>Index</title>
     <style>
-        .xxsmall-text {
-            font-size: xx-small;
-        }
-
-        .small-text {
-            font-size: small;
-        }
-
-        pre {
-            background-color: black;
-            color: white;
-            padding: 4px;
-        }
-
-        .wm-title-row {
-            background: black;
-            max-height: 22px;
-            line-height: 22px;
-        }
-
-        .wm-status-row {
-            background-color: #aaaaaa;
-            max-height: 6px;
-            min-height: 6px;
-        }
-
-        .wm-status-left {
-            max-width: 28px;
-            border-style: solid;
-            border-top-color: #ffffffff;
-            border-right-color: #555555;
-            border-left-color: black;
-            border-bottom-color: black;
-            border-top-width: 1px;
-            border-right-width: 1px;
-            border-left-width: 1px;
-            border-bottom-width: 1px;
-        }
-
-        .wm-status-mid {
-            border-style: solid;
-            border-top-color: #ffffffff;
-            border-left-color: white;
-            border-right-color: #555555;
-            border-bottom-color: black;
-            border-top-width: 1px;
-            border-right-width: 1px;
-            border-left-width: 1px;
-            border-bottom-width: 1px;
-        }
-
-        .wm-status-right {
-            max-width: 28px;
-            border-style: solid;
-            border-top-color: #ffffffff;
-            border-right-color: #555555;
-            border-left-color: white;
-            border-bottom-color: black;
-            border-right-color: black;
-            border-top-width: 1px;
-            border-right-width: 1px;
-            border-left-width: 1px;
-            border-bottom-width: 1px;
-        }
-
-        .wm-icon-col {
-            max-width: 22px;
-            max-height: 22px;
-        }
-
-        .wm-title-col {
-            font-family: 'Times New Roman', Times, serif;
-            margin-left: 1px;
-            margin-right: 1px;
-            padding-left: 1px;
-        }
-
-        .wmaker-title-bar,
-        .wm-title-col,
-        .wm-icon-col {
-            font-weight: bold;
-            border-style: solid;
-            border-right-color: #616161;
-            border-bottom-color: #616161;
-            border-top-color: #b6b6b6;
-            border-left-color: #b6b6b6;
-            border-width: 1px;
-        }
-
-        .search-container {
-            box-shadow: 12px 12px 0px 1px rgb(0, 0, 0);
-            background-color: #e5e5e5;
-            color: black;
-            font-weight: 100;
-            font-family: monospace;
-        }
-
-        .search-input {
-            outline: none !important;
-            border-width: 1px !important;
-            font-family: monospace;
-            border-left-color: black;
-            border-right-color: white;
-            border-top-color: black;
-            border-bottom-color: white;
-            border-radius: 0;
-            width: 100%
-        }
-
-        .dialog-container {
-            border-style: solid;
-            border-color: red;
-            padding: 10px;
-            margin: 1px;
-            border-width: 1px;
-            border-top-color: white;
-            border-left-color: white;
-            border-right-color: black;
-            border-bottom-color: black;
-        }
-
-        .result-card {
-            background-color: #e5e5e5;
-            color: black;
-            font-family: Arial, Helvetica, sans-serif;
-            box-shadow: 10px 10px 0px 1px rgb(0, 0, 0);
-        }
-
-        .result-card-promoted {
-            background-color: #ffffff;
-            color: black;
-            font-family: Arial, Helvetica, sans-serif;
-            box-shadow: 10px 10px 0px 1px rgb(0, 0, 0);
-        }
-
-
-        .url-parts {
-            font-size: xx-small;
-            font-family: monospace;
-        }
-
         body {
-            background-color: #0000ee;
+            background-color: #121212;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding-top: 20px;
         }
 
-        .dialog-button:hover {
-            background-color: #0000ee;
-            color: yellow;
+        .container {
+            width: 90%;
+        }
+
+        .search-bar {
+            margin-bottom: 25px;
+            border: none
+        }
+
+        .search-bar input {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 25px;
+            background-color: #333;
+            color: #fff;
+            font-size: 16px;
+            outline: none;
+        }
+
+        .results {
+            background-color: #333;
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        .result-item {
+            padding: 15px;
+            border-bottom: 1px solid #444;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-title {
+            font-size: 18px;
+            color: #1e90ff;
+        }
+
+        .result-url {
+            font-size: 14px;
+            color: #bbb;
+        }
+
+        .result-snippet {
+            font-size: 16px;
+            color: #ddd;
+        }
+
+        .result-breadcrumb {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .a-no-deco {
+            text-decoration: none;
+            color: inherit;
         }
     </style>
 </head>
 
-<body class="p-0 m-0 border-0">
-
-    <!-- wmaker title bar -->
-    <div class="d-flex flex-row wm-title-row p-0 m-0">
-        <div class="col-1 wm-icon-col">
-            <img class="align-top" src="/img/minimize.png">
+<body>
+    <div class="container">
+        <div class="search-bar">
+            <input id="search-input" type="text" placeholder="Search..." autocapitalize="off" autofocus>
         </div>
-        <div class="col-10 wm-title-col flex-fill text-center">
-            GSearch
-        </div>
-        <div class="col-1 wm-icon-col">
-            <img class="align-top" src="/img/close.png">
-        </div>
-    </div>
-
-    <!--
-        SEARCH BAR
-    -->
-    <div class="container w-75 search-container p-1 mb-4 mt-4 text-center" id="search_bar_container">
-        <div class="container dialog-container">
-            <div class="row m-0 mb-1 p-0">
-                Search:
-            </div>
-            <div class="row m-0 p-0">
-                <input id="search_bar" class="search-input m-0 p-0" autocapitalize="off" autofocus>
-            </div>
-            <div class="row mt-2 p-0 justify-content-center">
-                <div class="col">
-                    <button type="button" id="search_button" class="btn dialog-button">&ltSearch&gt</button>
-                </div>
-                <div class="col">
-                    <button type="button" id="chat_button" class="btn dialog-button">&ltChatGPT&gt</button>
-                </div>
-            </div>
+        <div id="results" class="results" style="display: none;">
         </div>
     </div>
 
 
-    <!--
-        SEARCH RESULTS CONTAINER
-    -->
-    <div class="container p-2 w-75 mt-2" id="search-results-container">
-    </div>
-
-    <!--
-        SEARCH RESULTS ENTRY
-    -->
     <template id="search_result">
-        <div class="container result-card p-1 mt-4 mb-4">
-            <div class="container dialog-container">
-                <div class="row">
-                    <div class="col">
-                        <h7><a target="_blank" rel="noopener noreferrer" id="title_link" href="/"></a></h7>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col url-parts" id="url_parts"></div>
-                </div>
-                <div class="row">
-                    <div class="col" id="result_text">
-                    </div>
-                </div>
+        <div class="result-item">
+            <div class="result-title">
+                <a target="_blank" rel="noopener noreferrer" id="title_link" class="a-no-deco" href="/"></a>
             </div>
-        </div>
-    </template>
-
-    <!--
-        STATUS BAR
-    -->
-    <div class="fixed-bottom">
-        <div class="d-flex flex-row wm-status-row p-0 m-0">
-            <div class="col wm-status-left"></div>
-            <div class="col wm-status-mid flex-fill"></div>
-            <div class="col wm-status-right"></div>
-        </div>
-    </div>
-
-    <!--
-        SPELLING
-    -->
-    <template id="alert_spelling">
-        <div class="alert alert-secondary" role="alert">
-        </div>
-    </template>
-
-    <!--
-        CHAT TEMPLATE
-    -->
-    <template id="chatgpt_sandbox">
-        <div class="container result-card p-1 mt-4 mb-4">
-            <div class="container dialog-container">
-                <div id="chat_msg"></div>
-            </div>
+            <div id="url_parts" class="result-breadcrumb"></div>
+            <div id="result_text" class="result-snippet"></div>
         </div>
     </template>
 

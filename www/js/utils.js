@@ -1,5 +1,21 @@
 //@ts-check
 
+
+/**
+ * @param {HTMLElement} element
+ */
+export function hide_element(element) {
+    element.style.display = "none"
+}
+
+/**
+ * @param {HTMLElement} element
+ */
+export function show_element(element) {
+    element.style.display = "block"
+}
+
+
 /**
  * @param {string} url
  * @returns {Promise<any | null>}
@@ -23,8 +39,6 @@ export async function fetch_as_json(url) {
 
     return null
 }
-
-
 
 /**
  * @param {HTMLElement} element

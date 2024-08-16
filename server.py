@@ -14,7 +14,7 @@ from aiohttp import web
 from jsonconfig import JSONConfig
 
 
-DEF_PORT = 8080
+DEF_PORT = 8000
 DEF_ADDR = "0.0.0.0"
 
 OPEN_SEARCH_TEMPLATE = """

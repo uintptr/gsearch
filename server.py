@@ -201,6 +201,9 @@ class GCSEHandler:
             # lucky
             gcse_data = await self.google_request.get(q[2:])
             location = self.__get_lucky_url(gcse_data)
+        elif q.startswith("a "):
+            # amazon
+            location = f"https://www.amazon.ca/s?k={q}"
 
         if location is not None:
 

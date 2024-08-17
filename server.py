@@ -162,27 +162,9 @@ class GCSEHandler:
 
         return item["link"]
 
-    ############################################################################
-    # PUBLIC
-    ############################################################################
-
-    async def static(self, request: web.Request) -> web.StreamResponse:
-
-        fn = os.path.abspath(request.path)[1:]
-
-        if (fn == ""):
-            fn = "index.html"
-
-        return web.FileResponse(os.path.join(self.www_root, fn))
-
-    async def search(self, req: web.Request) -> web.Response | web.FileResponse:
+    async def __rdr(self, q: str) -> str | None:
 
         location = None
-
-        if "q" not in req.rel_url.query:
-            return web.Response(status=HTTPStatus.BAD_REQUEST)
-
-        q = req.rel_url.query["q"]
 
         if q.startswith("r "):
             # reddit
@@ -205,6 +187,36 @@ class GCSEHandler:
             # amazon
             q = q[2:]
             location = f"https://www.amazon.ca/s?k={q}"
+        elif q.startswith("m "):
+            # maps
+            q = q[2:]
+            location = f"https://www.google.com/maps/search/{q}/"
+
+        return location
+
+    ############################################################################
+    # PUBLIC
+    ############################################################################
+
+    async def static(self, request: web.Request) -> web.StreamResponse:
+
+        fn = os.path.abspath(request.path)[1:]
+
+        if (fn == ""):
+            fn = "index.html"
+
+        return web.FileResponse(os.path.join(self.www_root, fn))
+
+    async def search(self, req: web.Request) -> web.Response | web.FileResponse:
+
+        location = None
+
+        if "q" not in req.rel_url.query:
+            return web.Response(status=HTTPStatus.BAD_REQUEST)
+
+        q = req.rel_url.query["q"]
+
+        location = await self.__rdr(q)
 
         if location is not None:
 

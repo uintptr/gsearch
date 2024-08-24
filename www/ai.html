@@ -7,6 +7,7 @@
     <title>Dark Themed Search Bar</title>
     <link rel="search" type="application/opensearchdescription+xml" title="GSearch" href="/opensearch.xml">
     <script src="/js/utils.js" type="module"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         body {
             background-color: #121212;
@@ -29,7 +30,7 @@
             border: none
         }
 
-        .search-bar input {
+        innerText .search-bar input {
             width: 95%;
             padding: 10px;
             border: none;
@@ -84,22 +85,10 @@
 
 <body>
     <div class="container">
-        <div class="search-bar">
-            <input id="search-input" type="text" placeholder="Search..." autocapitalize="off" autofocus>
-        </div>
         <div id="results" class="results" style="display: none;">
+            <div id="chat_text" class="result-snippet"></div>
         </div>
     </div>
-
-    <template id="search_result">
-        <div class="result-item">
-            <div class="result-title">
-                <a target="_blank" rel="noopener noreferrer" id="title_link" class="a-no-deco" href="/"></a>
-            </div>
-            <div id="url_parts" class="result-breadcrumb"></div>
-            <div id="result_text" class="result-snippet"></div>
-        </div>
-    </template>
 
     <script src="/js/app.js" type="module"></script>
 </body>

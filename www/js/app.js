@@ -4,6 +4,22 @@ import * as utils from "./utils.js"
 
 export { }
 
+/**
+ * @param {string} q
+ * @returns {Promise<string | null>}
+*/
+async function chat(q) {
+
+    const url = "/api/chat?q=" + q
+
+    let results = await utils.fetch_as_json(url)
+
+    if (null != results) {
+        return results["content"]
+    }
+
+    return null
+}
 
 /**
  * @param {any} item
@@ -77,9 +93,6 @@ async function issue_query(container, q) {
             if (card != null && card instanceof HTMLElement) {
                 container.appendChild(card)
             }
-
-            console.log(item)
-            //console.log(card)
         });
 
         utils.show_element(container)
@@ -164,18 +177,50 @@ function init_search_bar(q) {
     }
 }
 
+
+/**
+ * @param {string} q
+ */
+async function init_ai(q) {
+
+    const resp = await chat(q)
+
+    if (null != resp) {
+
+        const result_container = document.getElementById("results")
+
+        if (result_container != null && result_container instanceof HTMLElement) {
+
+            const container = document.getElementById('chat_text')
+
+            if (container != null && container instanceof HTMLElement) {
+                container.innerHTML = marked.parse(resp)
+            }
+
+            utils.show_element(result_container)
+        }
+    }
+}
+
 async function main() {
 
     var q = null
 
-    const queryString = window.location.search;
+    const search = window.location.search;
 
-    if (queryString != null && queryString.length > 0) {
-        const urlParams = new URLSearchParams(queryString);
+    if (search != null && search.length > 0) {
+        const urlParams = new URLSearchParams(search);
         q = urlParams.get('q')
     }
 
-    init_search_bar(q)
+    if (window.location.pathname == "/ai.html") {
+        if (null != q) {
+            await init_ai(q)
+        }
+    }
+    else {
+        init_search_bar(q)
+    }
 }
 
 await main()

@@ -162,7 +162,7 @@ class GCSEHandler:
 
         return item["link"]
 
-    async def __rdr(self, q: str) -> str | None:
+    async def __rdr(self, req: web.Request, q: str) -> str | None:
 
         location = None
 
@@ -191,6 +191,10 @@ class GCSEHandler:
             # maps
             q = q[2:]
             location = f"https://www.google.com/maps/search/{q}/"
+        elif q.startswith("ai "):
+            # ai
+            q = q[3:]
+            location = f"{req.scheme}://{req.host}/ai.html?q={q}"
 
         return location
 
@@ -216,7 +220,7 @@ class GCSEHandler:
 
         q = req.rel_url.query["q"]
 
-        location = await self.__rdr(q)
+        location = await self.__rdr(req, q)
 
         if location is not None:
 

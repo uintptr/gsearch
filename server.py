@@ -191,9 +191,9 @@ class GCSEHandler:
             # maps
             q = q[2:]
             location = f"https://www.google.com/maps/search/{q}/"
-        elif q.startswith("ai "):
-            # ai
-            q = q[3:]
+        elif q.startswith("c"):
+            # chat / ai
+            q = q[2:]
             location = f"{req.scheme}://{req.host}/ai.html?q={q}"
 
         return location

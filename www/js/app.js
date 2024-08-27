@@ -179,26 +179,95 @@ function init_search_bar(q) {
 
 
 /**
+* @param {HTMLElement} container
+* @param {string} cmd
+*/
+async function on_chat_cb(container, cmd) {
+    console.log(cmd)
+}
+
+/**
+ * @param {HTMLElement} container
+ * @param {string} respose
+ */
+function add_chat_response(container, respose) {
+
+    utils.show_element(container)
+
+    const result = utils.new_template("search_result")
+
+    if (null != result) {
+
+        const text_container = result.querySelector("#chat_text")
+
+        if (text_container != null && text_container instanceof HTMLElement) {
+            text_container.innerHTML = marked.parse(respose)
+
+            container.appendChild(text_container)
+        }
+        else{
+            console.log("unable to find text container")
+        }
+    }
+    else {
+        console.log("couldn't find template")
+    }
+}
+
+
+function init_cmd_line() {
+
+    const result_container = document.getElementById("results")
+
+    if (result_container != null && result_container instanceof HTMLElement) {
+
+        const cmd_input = document.getElementById('cmd_line');
+
+        if (cmd_input != null && cmd_input instanceof HTMLInputElement) {
+
+            cmd_input.addEventListener("keyup", async function (e) {
+                if (e.key == "Enter") {
+                    //
+                    // hide the keyboard
+                    //
+                    if (true == utils.isMobile()) {
+                        cmd_input.blur()
+                    }
+                    await on_chat_cb(result_container, cmd_input.value)
+                }
+                else if (e.key == "Escape") {
+                    cmd_input.value = ""
+                }
+            })
+        }
+        else {
+            console.log("couldn't find the search input")
+        }
+    }
+}
+
+
+/**
  * @param {string} q
  */
-async function init_ai(q) {
+async function process_main_query(q) {
 
-    const resp = await chat(q)
+    const response = await chat(q)
 
-    if (null != resp) {
+    if (null != response) {
 
-        const result_container = document.getElementById("results")
+        const result = document.getElementById("results")
 
-        if (result_container != null && result_container instanceof HTMLElement) {
+        if (result != null && result instanceof HTMLElement) {
 
-            const container = document.getElementById('chat_text')
-
-            if (container != null && container instanceof HTMLElement) {
-                container.innerHTML = marked.parse(resp)
-            }
-
-            utils.show_element(result_container)
+            add_chat_response(result, response)
         }
+        else {
+            console.log("couldn't find results")
+        }
+    }
+    else {
+        console.log("empty response from chat api")
     }
 }
 
@@ -213,9 +282,11 @@ async function main() {
         q = urlParams.get('q')
     }
 
-    if (window.location.pathname == "/ai.html") {
+    if (window.location.pathname == "/chat.html") {
+        init_cmd_line()
+
         if (null != q) {
-            await init_ai(q)
+            await process_main_query(q)
         }
     }
     else {

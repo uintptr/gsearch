@@ -194,7 +194,7 @@ class GCSEHandler:
         elif q.startswith("c"):
             # chat / ai
             q = q[2:]
-            location = f"{req.scheme}://{req.host}/ai.html?q={q}"
+            location = f"{req.scheme}://{req.host}/chat.html?q={q}"
 
         return location
 
@@ -218,7 +218,7 @@ class GCSEHandler:
         if "q" not in req.rel_url.query:
             return web.Response(status=HTTPStatus.BAD_REQUEST)
 
-        q = req.rel_url.query["q"]
+        q = req.rel_url.query["q"].replace(".", " ")
 
         location = await self.__rdr(req, q)
 
@@ -239,7 +239,7 @@ class GCSEHandler:
         if "q" not in req.rel_url.query:
             return web.Response(status=HTTPStatus.BAD_REQUEST)
 
-        q = req.rel_url.query["q"]
+        q = req.rel_url.query["q"].replace(".", " ")
 
         data = await self.google_request.get(q)
 
@@ -253,7 +253,7 @@ class GCSEHandler:
         if "q" not in req.rel_url.query:
             return web.Response(status=HTTPStatus.BAD_REQUEST)
 
-        q = req.rel_url.query["q"]
+        q = req.rel_url.query["q"].replace(".", " ")
 
         data = await self.ai.post(q)
 
@@ -276,6 +276,9 @@ class GCSEHandler:
         template = OPEN_SEARCH_TEMPLATE.replace("__HOST__", req.host)
         return web.Response(text=template, content_type="application/xml")
 
+    async def cmdline(self, req: web.Resource) -> web.Response:
+        raise NotImplementedError("todo")
+
 
 def run_server(addr: str, port: int) -> None:
 
@@ -292,6 +295,7 @@ def run_server(addr: str, port: int) -> None:
     app = web.Application()
 
     app.add_routes(routes)
+    # app.router.add_post("/api/cmdline", handler.cmdline)
 
     web.run_app(app, port=port, host=addr, reuse_address=True)  # type: ignore
 

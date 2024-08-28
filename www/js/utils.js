@@ -15,6 +15,31 @@ export function show_element(element) {
     element.style.display = "block"
 }
 
+/**
+* @param {string} url
+* @param {object} data
+* @returns {Promise<any | null>}
+*/
+export async function fetch_post_json(url, data = {}) {
+
+    try {
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        return response.json();
+    }
+    catch (e) {
+        console.log("exception")
+        console.log(e)
+    }
+
+    return null
+}
 
 /**
  * @param {string} url

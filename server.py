@@ -7,6 +7,8 @@ import errno
 import argparse
 import asyncio
 from http import HTTPStatus
+from dataclasses import dataclass, asdict
+from typing import Callable, Awaitable
 
 import aiohttp
 from aiohttp import web
@@ -44,6 +46,8 @@ class AI:
         self.model = config.get("/openai/model", "gpt-3.5-turbo")
         self.url = config.get("/openai/url")
 
+        self.__config = config
+
     async def post(self, message: str) -> bytes:
 
         headers = {"Authorization": f"Bearer {self.key}"}
@@ -75,6 +79,21 @@ class AI:
                     return message["content"]  # type: ignore
 
         return None
+
+    def get_prompt(self) -> str:
+        return self.system
+
+    def set_prompt(self, prompt: str) -> None:
+
+        self.system = prompt
+        self.__config.set("/openai/system", self.system)
+
+    def get_model(self) -> str:
+        return self.model
+
+    def set_model(self, model: str) -> None:
+        self.model = model
+        self.__config.set("/openai/model", self.model)
 
 
 class RedditCache:
@@ -114,6 +133,90 @@ class RedditCache:
         return None
 
 
+@dataclass
+class UserCommand:
+
+    cmd: str
+    args: str = ""
+
+
+@dataclass
+class CmdHandler:
+
+    name: str
+    help: str
+    handler: Callable[[UserCommand], Awaitable[str]]
+    markdown: bool = False
+    hidden: bool = False
+
+
+@dataclass
+class CmdResponse:
+    data: str = ""
+    markdown: bool = False
+    error: str = ""
+
+
+class CmdLine:
+
+    def __init__(self, ai: AI) -> None:
+        self.__ai = ai
+
+        self.__commands = [
+            CmdHandler("/help", "This help", self.help, True),
+            CmdHandler("/chat", "LLM chat", self.chat, True, True),
+            CmdHandler("/prompt", "Get or change prompt", self.prompt),
+            CmdHandler("/model", "Get current model", self.model, True)
+        ]
+
+    async def help(self, cmd: UserCommand) -> str:
+
+        help_str = "```\ncommands:\n"
+
+        for c in self.__commands:
+            if False == c.hidden:
+                help_str += f"    {c.name:<12}{c.help}\n"
+
+        help_str += "```"
+
+        return help_str
+
+    async def chat(self, cmd: UserCommand) -> str:
+
+        if "" == cmd.args:
+            raise ValueError("Missing message")
+
+        resp = await self.__ai.chat(cmd.args)
+
+        if resp is None:
+            resp = ""
+
+        return resp
+
+    async def prompt(self, cmd: UserCommand) -> str:
+
+        if "" != cmd.args:
+            self.__ai.set_prompt(cmd.args)
+
+        return self.__ai.get_prompt()
+
+    async def model(self, cmd: UserCommand) -> str:
+
+        if "" != cmd.args:
+            self.__ai.set_model(cmd.args)
+
+        return self.__ai.get_model()
+
+    async def exec(self, cmd: UserCommand) -> CmdResponse:
+
+        for c in self.__commands:
+            if cmd.cmd == c.name:
+                response = await c.handler(cmd)
+                return CmdResponse(response, c.markdown)
+
+        raise NotImplementedError(f"{cmd} is not implemented")
+
+
 class GoogleRequestHandler:
 
     def __init__(self, config: JSONConfig) -> None:
@@ -147,6 +250,7 @@ class GCSEHandler:
         self.google_request = GoogleRequestHandler(config)
         self.ai = AI(config)
         self.reddit_cache = RedditCache(config, self.ai)
+        self.cmdline = CmdLine(self.ai)
 
     def __get_lucky_url(self, gcse_data: bytes) -> str | None:
 
@@ -276,8 +380,29 @@ class GCSEHandler:
         template = OPEN_SEARCH_TEMPLATE.replace("__HOST__", req.host)
         return web.Response(text=template, content_type="application/xml")
 
-    async def cmdline(self, req: web.Resource) -> web.Response:
-        raise NotImplementedError("todo")
+    async def api_cmd(self, req: web.Request) -> web.Response:
+
+        data = await req.json()
+
+        user_cmd = UserCommand(**data)
+
+        resp = CmdResponse()
+
+        try:
+
+            if "cmd" not in data:
+                raise ValueError("missing command")
+
+            resp = await self.cmdline.exec(user_cmd)
+            status = HTTPStatus.OK
+        except NotImplementedError as e:
+            resp.error = str(e)
+            status = HTTPStatus.NOT_IMPLEMENTED
+        except ValueError as e:
+            resp.error = str(e)
+            status = HTTPStatus.BAD_REQUEST
+
+        return web.json_response(asdict(resp), status=status)
 
 
 def run_server(addr: str, port: int) -> None:
@@ -295,7 +420,8 @@ def run_server(addr: str, port: int) -> None:
     app = web.Application()
 
     app.add_routes(routes)
-    # app.router.add_post("/api/cmdline", handler.cmdline)
+
+    app.router.add_post("/api/cmd", handler.api_cmd)
 
     web.run_app(app, port=port, host=addr, reuse_address=True)  # type: ignore
 

@@ -35,6 +35,10 @@
             border-bottom: 1px solid #444;
         }
 
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
         .result-snippet {
             font-size: 16px;
             color: #ddd;
@@ -70,7 +74,7 @@
     </div>
 
     <template id="search_result">
-        <div class="result-item">
+        <div id="chat_item" class="result-item">
             <div id="chat_text" class="result-snippet"></div>
         </div>
     </template>

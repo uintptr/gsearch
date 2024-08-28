@@ -169,28 +169,19 @@ function init_search_bar(q) {
             }
         }
         else {
-            console.log("couldn't find the search input")
+            console.error("couldn't find the search input")
         }
     }
     else {
-        console.log("couldn't find the result container")
+        console.error("couldn't find the result container")
     }
-}
-
-
-/**
-* @param {HTMLElement} container
-* @param {string} cmd
-*/
-async function on_chat_cb(container, cmd) {
-    console.log(cmd)
 }
 
 /**
  * @param {HTMLElement} container
- * @param {string} respose
+ * @param {string} response
  */
-function add_chat_response(container, respose) {
+function add_chat_response(container, response) {
 
     utils.show_element(container)
 
@@ -201,25 +192,64 @@ function add_chat_response(container, respose) {
         const text_container = result.querySelector("#chat_text")
 
         if (text_container != null && text_container instanceof HTMLElement) {
-            text_container.innerHTML = marked.parse(respose)
+            text_container.innerHTML = response
 
-            container.appendChild(text_container)
+            container.appendChild(result)
         }
-        else{
-            console.log("unable to find text container")
+        else {
+            console.error("unable to find text container")
         }
     }
     else {
-        console.log("couldn't find template")
+        console.error("couldn't find template")
     }
+}
+
+
+/**
+* @param {HTMLElement} container
+* @param {string} user_input
+*/
+async function on_chat_cb(container, user_input) {
+
+    let req = {}
+
+    if (user_input.startsWith("/")) {
+        const cmd_name = user_input.split(' ', 1)[0]
+
+        req["cmd"] = cmd_name
+
+        if (user_input.length > cmd_name.length) {
+            req["args"] = user_input.substring(cmd_name.length + 1)
+        }
+
+    }
+    else {
+        req["cmd"] = "/chat"
+        req["args"] = user_input
+    }
+
+    let res = await utils.fetch_post_json("/api/cmd", req)
+
+    if ("error" in res && "" != res["error"]) {
+        console.error(res["error"])
+    }
+
+    let res_str = res["data"]
+
+    if ("markdown" in res && true == res["markdown"]) {
+        res_str = marked.parse(res_str)
+    }
+
+    add_chat_response(container, res_str)
 }
 
 
 function init_cmd_line() {
 
-    const result_container = document.getElementById("results")
+    const results_container = document.getElementById("results")
 
-    if (result_container != null && result_container instanceof HTMLElement) {
+    if (results_container != null && results_container instanceof HTMLElement) {
 
         const cmd_input = document.getElementById('cmd_line');
 
@@ -227,13 +257,17 @@ function init_cmd_line() {
 
             cmd_input.addEventListener("keyup", async function (e) {
                 if (e.key == "Enter") {
+
                     //
                     // hide the keyboard
                     //
                     if (true == utils.isMobile()) {
                         cmd_input.blur()
                     }
-                    await on_chat_cb(result_container, cmd_input.value)
+
+                    const cmd_line = cmd_input.value
+                    cmd_input.value = ""
+                    await on_chat_cb(results_container, cmd_line)
                 }
                 else if (e.key == "Escape") {
                     cmd_input.value = ""
@@ -241,7 +275,7 @@ function init_cmd_line() {
             })
         }
         else {
-            console.log("couldn't find the search input")
+            console.error("couldn't find the search input")
         }
     }
 }
@@ -263,11 +297,11 @@ async function process_main_query(q) {
             add_chat_response(result, response)
         }
         else {
-            console.log("couldn't find results")
+            console.error("couldn't find results")
         }
     }
     else {
-        console.log("empty response from chat api")
+        console.error("empty response from chat api")
     }
 }
 

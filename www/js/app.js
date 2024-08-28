@@ -343,24 +343,29 @@ function init_cmd_line() {
  */
 async function process_main_query(q) {
 
-
-
     const result = document.getElementById("results")
 
     if (result != null && result instanceof HTMLElement) {
-        let response = await chat(q)
 
-        if (null == response) {
-            response = "😢"
+        add_chat_response(result, q, false, "user")
+
+        const req = {
+            "cmd": "/chat",
+            "args": q
         }
 
-        add_chat_response(result, response, true, "user")
+        let res = await utils.fetch_post_json("/api/cmd", req)
+        let response = "😢"
+
+        if (null != res) {
+            response = res["data"]
+        }
+
+        add_chat_response(result, response, true, "system")
     }
     else {
         console.error("couldn't find results")
     }
-
-
 }
 
 async function main() {

@@ -343,23 +343,24 @@ function init_cmd_line() {
  */
 async function process_main_query(q) {
 
-    const response = await chat(q)
 
-    if (null != response) {
 
-        const result = document.getElementById("results")
+    const result = document.getElementById("results")
 
-        if (result != null && result instanceof HTMLElement) {
+    if (result != null && result instanceof HTMLElement) {
+        let response = await chat(q)
 
-            add_chat_response(result, response, true, "user")
+        if (null == response) {
+            response = "😢"
         }
-        else {
-            console.error("couldn't find results")
-        }
+
+        add_chat_response(result, response, true, "user")
     }
     else {
-        console.error("empty response from chat api")
+        console.error("couldn't find results")
     }
+
+
 }
 
 async function main() {

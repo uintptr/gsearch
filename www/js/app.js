@@ -309,6 +309,10 @@ function init_cmd_line() {
 
         if (cmd_input != null && cmd_input instanceof HTMLInputElement) {
 
+            document.addEventListener('keydown', function (event) {
+                cmd_input.focus()
+            });
+
             cmd_input.addEventListener("keyup", async function (e) {
                 if (e.key == "Enter") {
 

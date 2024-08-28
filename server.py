@@ -98,16 +98,16 @@ class AI:
                                                                 file=f)
             return res.text
 
-    async def chat(self, user: str, history: list[ChatHistory] = [], user_prompt: str | None = None) -> ChatResponse:
+    async def chat(self, history: list[ChatHistory] = [], prompt: str | None = None) -> ChatResponse:
 
         messages: list[ChatCompletionMessageParam] = []
 
-        if user_prompt is not None:
-            prompt = user_prompt
+        if prompt is not None:
+            system = prompt
         else:
-            prompt = self.system
+            system = self.system
 
-        s = ChatCompletionSystemMessageParam(content=prompt, role="system")
+        s = ChatCompletionSystemMessageParam(content=system, role="system")
 
         messages.append(s)
 
@@ -182,10 +182,12 @@ class RedditCache:
 
         prompt = "you are usefull assistant"
 
-        r = await self.ai.chat(q, user_prompt=prompt)
+        msg = ChatHistory("user", q)
+
+        r = await self.ai.chat([msg], prompt)
 
         async with self.query_cache_lock:
-            self.config.set(f"/reddit/cache/{string}", r)
+            self.config.set(f"/reddit/cache/{string}", r.message)
 
         return r.message
 
@@ -227,6 +229,7 @@ class CmdLine:
             CmdHandler("/model", "Get current model", self.model, True),
             CmdHandler("/uptime", "Uptime", self.uptime, True),
             CmdHandler("/reset", "Reset output", self.reset),
+            CmdHandler("/clear", "Clear output", self.reset),
         ]
 
     async def __exec(self, cmd_line: str) -> tuple[int, str, str]:
@@ -274,7 +277,9 @@ class CmdLine:
         for c in cmd.history:
             hist.append(ChatHistory(**c))  # type: ignore
 
-        resp = await self.__ai.chat(cmd.args, hist)
+        hist.append(ChatHistory("user", cmd.args))
+
+        resp = await self.__ai.chat(hist)
 
         return resp.message
 

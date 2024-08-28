@@ -261,12 +261,17 @@ async function on_chat_cb(container, user_input) {
     if (user_input.startsWith("/")) {
         const cmd_name = user_input.split(' ', 1)[0]
 
+        if (cmd_name.startsWith("/reset") || cmd_name.startsWith("/clear")) {
+            utils.remove_all_children(container)
+            utils.hide_element(container)
+            return
+        }
+
         req["cmd"] = cmd_name
 
         if (user_input.length > cmd_name.length) {
             req["args"] = user_input.substring(cmd_name.length + 1)
         }
-
     }
     else {
         chat_source = "system"

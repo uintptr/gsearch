@@ -1,2 +1,3 @@
+openai
 aiohttp
 git+https://github.com/uintptr/jsonconfig

@@ -2,13 +2,22 @@
 
 import sys
 import os
+import time
 import json
 import errno
 import argparse
 import asyncio
 from http import HTTPStatus
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from typing import Callable, Awaitable
+
+
+from openai import AsyncOpenAI
+from openai.types.chat import ChatCompletionMessageParam
+from openai.types.chat import ChatCompletionUserMessageParam
+from openai.types.chat import ChatCompletionSystemMessageParam
+from openai.types.chat import ChatCompletionAssistantMessageParam
+
 
 import aiohttp
 from aiohttp import web
@@ -36,64 +45,113 @@ def printkv(k: str, v: object) -> None:
     print(f"    {k:<25}{v}")
 
 
-class AI:
+@dataclass
+class ChatResponse:
+    create_ts: float
+    response_ts: float
+    id: str
+    message: str
 
+    def __str__(self):
+        return f"id=${self.id} message={self.message}"
+
+
+@dataclass
+class ChatHistory:
+    role: str
+    content: str
+    ts: float = 0
+
+
+class AI:
     def __init__(self, config: JSONConfig) -> None:
 
-        self.key = config.get("/openai/key")
-        self.system = config.get("/openai/system")
-        self.temperature = config.get_float("/openai/temperature", 0.7)
-        self.model = config.get("/openai/model", "gpt-3.5-turbo")
         self.url = config.get("/openai/url")
+        self.key = config.get("/openai/key")
+        self.model = config.get("/openai/model")
+        self.system = config.get("/openai/system")
+        self.temperature = config.get_float("/openai/temperature", 0.3)
+        self.max_prompt = config.get_int("/openai/max_prompt", 12)
 
-        self.__config = config
+        self.config = config
 
-    async def post(self, message: str) -> bytes:
+        self.client = AsyncOpenAI(api_key=self.key)
 
-        headers = {"Authorization": f"Bearer {self.key}"}
-
-        messages = [
-            {"role": "system", "content": self.system},
-            {"role": "user", "content": message}
-        ]
-
-        data = {"model": self.model,
-                "messages": messages,
-                "temperature": self.temperature}
-
-        async with aiohttp.ClientSession() as session:
-            async with session.post(self.url, headers=headers, json=data) as response:
-                return await response.read()
-
-    async def chat(self, message: str) -> str | None:
-
-        data = await self.post(message)
-
-        completion = json.loads(data.decode("utf-8"))
-
-        if ("choices" in completion):
-            if ("message" in completion["choices"][0]):
-                message = completion["choices"][0]["message"]
-
-                if "content" in message:
-                    return message["content"]  # type: ignore
-
-        return None
-
-    def get_prompt(self) -> str:
-        return self.system
-
-    def set_prompt(self, prompt: str) -> None:
-
-        self.system = prompt
-        self.__config.set("/openai/system", self.system)
+    def __str__(self) -> str:
+        return f"model={self.model} system={self.system}"
 
     def get_model(self) -> str:
         return self.model
 
-    def set_model(self, model: str) -> None:
+    def set_model(self, model: str) -> str:
+
         self.model = model
-        self.__config.set("/openai/model", self.model)
+        self.config.set("/openai/model", model)
+
+        return self.model
+
+    async def speech_to_text(self, file_path: str) -> str:
+
+        with open(file_path, "rb") as f:
+
+            res = await self.client.audio.transcriptions.create(model="whisper-1",
+                                                                file=f)
+            return res.text
+
+    async def chat(self, user: str, history: list[ChatHistory] = [], user_prompt: str | None = None) -> ChatResponse:
+
+        messages: list[ChatCompletionMessageParam] = []
+
+        if user_prompt is not None:
+            prompt = user_prompt
+        else:
+            prompt = self.system
+
+        s = ChatCompletionSystemMessageParam(content=prompt, role="system")
+
+        messages.append(s)
+
+        history = history[-self.max_prompt:]
+
+        for h in history:
+
+            if ("user" == h.role):
+                m = ChatCompletionUserMessageParam(
+                    content=h.content, role="user")
+            else:
+                m = ChatCompletionAssistantMessageParam(
+                    content=h.content, role="assistant")
+
+            messages.append(m)
+
+        create_ts = time.time()
+
+        comp = await self.client.chat.completions.create(model=self.model,
+                                                         temperature=self.temperature,
+                                                         messages=messages)
+
+        response_ts = time.time()
+
+        id = ""
+        message = ""
+
+        id = comp.id
+
+        if (comp.choices[0].message.content is not None):
+            message = comp.choices[0].message.content
+        else:
+            message = "empty response from completions API"
+
+        return ChatResponse(create_ts, response_ts, id, message)
+
+    def get_prompt(self) -> str:
+        return self.system
+
+    def set_prompt(self, system: str) -> str:
+        self.system = system
+        self.config.set("/openai/system", system)
+
+        return self.system
 
 
 class RedditCache:
@@ -122,15 +180,14 @@ class RedditCache:
         q += " Just return the name of the subreddit starting with /r/"
         q += " and nothing else"
 
-        r = await self.ai.chat(q)
+        prompt = "you are usefull assistant"
 
-        if r is not None:
-            async with self.query_cache_lock:
-                self.config.set(f"/reddit/cache/{string}", r)
+        r = await self.ai.chat(q, user_prompt=prompt)
 
-            return r
+        async with self.query_cache_lock:
+            self.config.set(f"/reddit/cache/{string}", r)
 
-        return None
+        return r.message
 
 
 @dataclass
@@ -138,6 +195,7 @@ class UserCommand:
 
     cmd: str
     args: str = ""
+    history: list[dict[str, str]] = field(default_factory=list)
 
 
 @dataclass
@@ -163,11 +221,12 @@ class CmdLine:
         self.__ai = ai
 
         self.__commands = [
-            CmdHandler("/help", "This help", self.help, True),
+            CmdHandler("/help", "This", self.help, True),
             CmdHandler("/chat", "LLM chat", self.chat, True, True),
             CmdHandler("/prompt", "Get or change prompt", self.prompt),
             CmdHandler("/model", "Get current model", self.model, True),
-            CmdHandler("/uptime", "Uptime", self.uptime),
+            CmdHandler("/uptime", "Uptime", self.uptime, True),
+            CmdHandler("/reset", "Reset output", self.reset),
         ]
 
     async def __exec(self, cmd_line: str) -> tuple[int, str, str]:
@@ -210,12 +269,14 @@ class CmdLine:
         if "" == cmd.args:
             raise ValueError("Missing message")
 
-        resp = await self.__ai.chat(cmd.args)
+        hist: list[ChatHistory] = []
 
-        if resp is None:
-            resp = ""
+        for c in cmd.history:
+            hist.append(ChatHistory(**c))  # type: ignore
 
-        return resp
+        resp = await self.__ai.chat(cmd.args, hist)
+
+        return resp.message
 
     async def prompt(self, cmd: UserCommand) -> str:
 
@@ -234,6 +295,9 @@ class CmdLine:
     async def uptime(self, cmd: UserCommand) -> str:
         _, uptime, _ = await self.__exec("/usr/bin/uptime")
         return uptime
+
+    async def reset(self, _: UserCommand) -> str:
+        raise NotImplementedError("Should be implemented in JS")
 
     async def handler(self, cmd: UserCommand) -> CmdResponse:
 
@@ -326,7 +390,8 @@ class GCSEHandler:
         elif q.startswith("c "):
             # chat / ai
             q = q[2:]
-            location = f"{req.scheme}://{req.host}/chat.html?q={q}"
+            # location = f"{req.scheme}://{req.host}/chat.html?q={q}"
+            location = "/chat.html?q={q}"
 
         return location
 
@@ -380,29 +445,6 @@ class GCSEHandler:
 
         return web.Response(status=HTTPStatus.NOT_FOUND)
 
-    async def api_chat(self, req: web.Request) -> web.Response:
-
-        if "q" not in req.rel_url.query:
-            return web.Response(status=HTTPStatus.BAD_REQUEST)
-
-        q = req.rel_url.query["q"].replace(".", " ")
-
-        data = await self.ai.post(q)
-
-        completion = json.loads(data.decode("utf-8"))
-
-        if ("choices" not in completion):
-            return web.Response(status=HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
-
-        choices = completion["choices"][0]
-
-        if "message" not in choices:
-            return web.Response(status=HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
-
-        message = choices["message"]
-        return web.Response(text=json.dumps(message),
-                            content_type="application/json")
-
     async def opensearch(self, req: web.Request) -> web.Response:
 
         template = OPEN_SEARCH_TEMPLATE.replace("__HOST__", req.host)
@@ -412,15 +454,11 @@ class GCSEHandler:
 
         data = await req.json()
 
-        user_cmd = UserCommand(**data)
-
         resp = CmdResponse()
 
         try:
 
-            if "cmd" not in data:
-                raise ValueError("missing command")
-
+            user_cmd = UserCommand(**data)
             resp = await self.cmdline.handler(user_cmd)
             status = HTTPStatus.OK
         except NotImplementedError as e:
@@ -441,7 +479,6 @@ def run_server(addr: str, port: int) -> None:
         web.get("/search", handler.search),
         web.get("/opensearch.xml", handler.opensearch),
         web.get("/api/search", handler.api_search),
-        web.get("/api/chat", handler.api_chat),
         web.get("/{path:.*}", handler.static)
     ]
 

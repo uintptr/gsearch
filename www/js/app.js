@@ -180,8 +180,10 @@ function init_search_bar(q) {
 /**
  * @param {HTMLElement} container
  * @param {string} response
+ * @param {boolean} markdown
+ * @param {string | null} chat_source
  */
-function add_chat_response(container, response) {
+function add_chat_response(container, response, markdown, chat_source = null) {
 
     utils.show_element(container)
 
@@ -189,10 +191,22 @@ function add_chat_response(container, response) {
 
     if (null != result) {
 
+        // to rebuild the context
+        if (null != chat_source) {
+            result.setAttribute("chat-source", chat_source)
+            result.setAttribute("chat-data", response)
+        }
+
         const text_container = result.querySelector("#chat_text")
 
         if (text_container != null && text_container instanceof HTMLElement) {
-            text_container.innerHTML = response
+
+            if (true == markdown) {
+                text_container.innerHTML = marked.parse(response)
+            }
+            else {
+                text_container.innerText = response
+            }
 
             container.appendChild(result)
         }
@@ -205,6 +219,34 @@ function add_chat_response(container, response) {
     }
 }
 
+/**
+* @param {HTMLElement} container
+* @returns {Object[]}
+*/
+function get_chat_context(container) {
+    let context_list = []
+
+    for (var i = 0; i < container.childElementCount; i++) {
+        let child = container.children[i]
+
+        if (child instanceof HTMLElement) {
+            const chat_source = child.getAttribute("chat-source")
+            const chat_data = child.getAttribute("chat-data")
+
+            if (null != chat_source && null != chat_data) {
+
+                const entry = {
+                    "role": chat_source,
+                    "content": chat_data
+                }
+
+                context_list.push(entry)
+            }
+        }
+    }
+
+    return context_list
+}
 
 /**
 * @param {HTMLElement} container
@@ -213,6 +255,8 @@ function add_chat_response(container, response) {
 async function on_chat_cb(container, user_input) {
 
     let req = {}
+    let chat_source = null
+    let markdown = false
 
     if (user_input.startsWith("/")) {
         const cmd_name = user_input.split(' ', 1)[0]
@@ -225,8 +269,13 @@ async function on_chat_cb(container, user_input) {
 
     }
     else {
+        chat_source = "system"
+
         req["cmd"] = "/chat"
         req["args"] = user_input
+        req["history"] = get_chat_context(container)
+
+        add_chat_response(container, user_input, true, "user")
     }
 
     let res = await utils.fetch_post_json("/api/cmd", req)
@@ -237,11 +286,11 @@ async function on_chat_cb(container, user_input) {
 
     let res_str = res["data"]
 
-    if ("markdown" in res && true == res["markdown"]) {
-        res_str = marked.parse(res_str)
+    if ("markdown" in res) {
+        markdown = res["markdown"]
     }
 
-    add_chat_response(container, res_str)
+    add_chat_response(container, res_str, markdown, chat_source)
 }
 
 
@@ -267,7 +316,10 @@ function init_cmd_line() {
 
                     const cmd_line = cmd_input.value
                     cmd_input.value = ""
-                    await on_chat_cb(results_container, cmd_line)
+
+                    if (cmd_line.length > 0) {
+                        await on_chat_cb(results_container, cmd_line)
+                    }
                 }
                 else if (e.key == "Escape") {
                     cmd_input.value = ""
@@ -294,7 +346,7 @@ async function process_main_query(q) {
 
         if (result != null && result instanceof HTMLElement) {
 
-            add_chat_response(result, response)
+            add_chat_response(result, response, true, "user")
         }
         else {
             console.error("couldn't find results")

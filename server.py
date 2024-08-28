@@ -396,7 +396,7 @@ class GCSEHandler:
             # chat / ai
             q = q[2:]
             # location = f"{req.scheme}://{req.host}/chat.html?q={q}"
-            location = "/chat.html?q={q}"
+            location = f"/chat.html?q={q}"
 
         return location
 

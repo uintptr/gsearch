@@ -166,8 +166,32 @@ class CmdLine:
             CmdHandler("/help", "This help", self.help, True),
             CmdHandler("/chat", "LLM chat", self.chat, True, True),
             CmdHandler("/prompt", "Get or change prompt", self.prompt),
-            CmdHandler("/model", "Get current model", self.model, True)
+            CmdHandler("/model", "Get current model", self.model, True),
+            CmdHandler("/uptime", "Uptime", self.uptime),
         ]
+
+    async def __exec(self, cmd_line: str) -> tuple[int, str, str]:
+
+        ret = 1
+        stdout = ""
+        stderr = ""
+
+        p = await asyncio.create_subprocess_shell(cmd_line,
+                                                  stdout=asyncio.subprocess.PIPE,
+                                                  stderr=asyncio.subprocess.PIPE)
+
+        stdout_buff, stderr_buff = await p.communicate()
+
+        if b'' != stdout_buff:
+            stdout = stdout_buff.decode("utf-8")
+
+        if b'' != stderr_buff:
+            stderr = stderr_buff.decode("utf-8")
+
+        if p.returncode is not None:
+            ret = p.returncode
+
+        return ret, stdout, stderr
 
     async def help(self, cmd: UserCommand) -> str:
 
@@ -207,7 +231,11 @@ class CmdLine:
 
         return self.__ai.get_model()
 
-    async def exec(self, cmd: UserCommand) -> CmdResponse:
+    async def uptime(self, cmd: UserCommand) -> str:
+        _, uptime, _ = await self.__exec("/usr/bin/uptime")
+        return uptime
+
+    async def handler(self, cmd: UserCommand) -> CmdResponse:
 
         for c in self.__commands:
             if cmd.cmd == c.name:
@@ -295,7 +323,7 @@ class GCSEHandler:
             # maps
             q = q[2:]
             location = f"https://www.google.com/maps/search/{q}/"
-        elif q.startswith("c"):
+        elif q.startswith("c "):
             # chat / ai
             q = q[2:]
             location = f"{req.scheme}://{req.host}/chat.html?q={q}"
@@ -393,7 +421,7 @@ class GCSEHandler:
             if "cmd" not in data:
                 raise ValueError("missing command")
 
-            resp = await self.cmdline.exec(user_cmd)
+            resp = await self.cmdline.handler(user_cmd)
             status = HTTPStatus.OK
         except NotImplementedError as e:
             resp.error = str(e)

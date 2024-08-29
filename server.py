@@ -311,7 +311,7 @@ class CmdLine:
                 response = await c.handler(cmd)
                 return CmdResponse(response, c.markdown)
 
-        raise NotImplementedError(f"{cmd} is not implemented")
+        return CmdResponse(f"Unknown command `{cmd.cmd}`", True)
 
 
 class GoogleRequestHandler:

@@ -367,11 +367,15 @@ class GCSEHandler:
 
         location = None
 
-        if q.startswith("r "):
-            # reddit
-            sub = await self.reddit_cache.get_sub_from_string(q[2:])
-            if sub is not None:
-                location = f"https://old.reddit.com{sub}"
+        if q.startswith("a "):
+            # amazon
+            q = q[2:]
+            location = f"https://www.amazon.ca/s?k={q}"
+        elif q.startswith("c "):
+            # chat / ai
+            q = q[2:]
+            # location = f"{req.scheme}://{req.host}/chat.html?q={q}"
+            location = f"/chat.html?q={q}"
         elif q.startswith("g "):
             # google
             q = q[2:]
@@ -384,19 +388,20 @@ class GCSEHandler:
             # lucky
             gcse_data = await self.google_request.get(q[2:])
             location = self.__get_lucky_url(gcse_data)
-        elif q.startswith("a "):
-            # amazon
-            q = q[2:]
-            location = f"https://www.amazon.ca/s?k={q}"
         elif q.startswith("m "):
             # maps
             q = q[2:]
             location = f"https://www.google.com/maps/search/{q}/"
-        elif q.startswith("c "):
-            # chat / ai
-            q = q[2:]
-            # location = f"{req.scheme}://{req.host}/chat.html?q={q}"
-            location = f"/chat.html?q={q}"
+        elif q.startswith("r "):
+            # reddit
+            sub = await self.reddit_cache.get_sub_from_string(q[2:])
+            if sub is not None:
+                location = f"https://old.reddit.com{sub}"
+        elif q.startswith("w "):
+            # wikipedia
+            wq = f"{q[2:]} wikipedia"
+            gcse_data = await self.google_request.get(wq)
+            location = self.__get_lucky_url(gcse_data)
 
         return location
 

@@ -461,8 +461,9 @@ class GCSEHandler:
         resp = CmdResponse()
 
         try:
+            # this'll make sure we got "something" from the user
             data = await req.json()
-            # convert to a dataclass.
+            # convert to a dataclass and python will type check for us
             user_cmd = UserCommand(**data)
             resp = await self.cmdline.handler(user_cmd)
             status = HTTPStatus.OK

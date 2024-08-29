@@ -435,8 +435,7 @@ class GCSEHandler:
                 "Location": location
             }
 
-            return web.Response(headers=headers,
-                                status=HTTPStatus.MOVED_PERMANENTLY)
+            return web.Response(headers=headers, status=HTTPStatus.FOUND)
 
         index = os.path.join(self.www_root, "index.html")
         return web.FileResponse(index)

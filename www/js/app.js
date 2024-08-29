@@ -202,7 +202,7 @@ function add_chat_response(container, response, markdown, chat_source = null) {
         if (text_container != null && text_container instanceof HTMLElement) {
 
             if (true == markdown) {
-                text_container.innerHTML = marked.parse(response)
+                text_container.innerHTML = marked.parse(response) // @ts-ignore
             }
             else {
                 text_container.innerText = response
@@ -310,6 +310,11 @@ function init_cmd_line() {
         if (cmd_input != null && cmd_input instanceof HTMLInputElement) {
 
             document.addEventListener('keydown', function (event) {
+
+                if (event.ctrlKey) {
+                    return
+                }
+
                 cmd_input.focus()
             });
 

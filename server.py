@@ -32,8 +32,8 @@ OPEN_SEARCH_TEMPLATE = """
 <OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
   <ShortName>GSearch</ShortName>
   <Description>Search gsearch.com</Description>
-  <Url type="text/html" method="get" template="https://__HOST__/search?q={searchTerms}"/>
-  <Image width="16" height="16" type="image/x-icon">https://__HOST__/favicon.ico</Image>
+  <Url type="text/html" method="get" template="__SCHEME__://__HOST__/search?q={searchTerms}"/>
+  <Image width="16" height="16" type="image/x-icon">__SCHEME__://__HOST__/favicon.ico</Image>
   <InputEncoding>UTF-8</InputEncoding>
   <OutputEncoding>UTF-8</OutputEncoding>
 </OpenSearchDescription>"""
@@ -363,7 +363,7 @@ class GCSEHandler:
 
         return item["link"]
 
-    async def __rdr(self, req: web.Request, q: str) -> str | None:
+    async def __rdr(self, q: str) -> str | None:
 
         location = None
 
@@ -374,7 +374,6 @@ class GCSEHandler:
         elif q.startswith("c "):
             # chat / ai
             q = q[2:]
-            # location = f"{req.scheme}://{req.host}/chat.html?q={q}"
             location = f"/chat.html?q={q}"
         elif q.startswith("g "):
             # google
@@ -425,9 +424,9 @@ class GCSEHandler:
         if "q" not in req.rel_url.query:
             return web.Response(status=HTTPStatus.BAD_REQUEST)
 
-        q = req.rel_url.query["q"].replace(".", " ")
+        q = req.rel_url.query["q"].replace(".", " ")  # iphone keyboard
 
-        location = await self.__rdr(req, q)
+        location = await self.__rdr(q)
 
         if location is not None:
 
@@ -437,8 +436,7 @@ class GCSEHandler:
 
             return web.Response(headers=headers, status=HTTPStatus.FOUND)
 
-        index = os.path.join(self.www_root, "index.html")
-        return web.FileResponse(index)
+        return web.FileResponse(os.path.join(self.www_root, "index.html"))
 
     async def api_search(self, req: web.Request) -> web.Response:
 
@@ -457,6 +455,7 @@ class GCSEHandler:
     async def opensearch(self, req: web.Request) -> web.Response:
 
         template = OPEN_SEARCH_TEMPLATE.replace("__HOST__", req.host)
+        template = template.replace("__SCHEME__", req.scheme)
         return web.Response(text=template, content_type="application/xml")
 
     async def api_cmd(self, req: web.Request) -> web.Response:

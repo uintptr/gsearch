@@ -180,11 +180,9 @@ class RedditCache:
         q += " Just return the name of the subreddit starting with /r/"
         q += " and nothing else"
 
-        prompt = "you are usefull assistant"
-
         msg = ChatHistory("user", q)
 
-        r = await self.ai.chat([msg], prompt)
+        r = await self.ai.chat([msg], "you are usefull assistant")
 
         async with self.query_cache_lock:
             self.config.set(f"/reddit/cache/{string}", r.message)
@@ -299,7 +297,7 @@ class CmdLine:
 
     async def uptime(self, cmd: UserCommand) -> str:
         _, uptime, _ = await self.__exec("/usr/bin/uptime")
-        return uptime
+        return f"`{uptime}`"
 
     async def reset(self, _: UserCommand) -> str:
         raise NotImplementedError("Should be implemented in JS")
@@ -460,12 +458,11 @@ class GCSEHandler:
 
     async def api_cmd(self, req: web.Request) -> web.Response:
 
-        data = await req.json()
-
         resp = CmdResponse()
 
         try:
-
+            data = await req.json()
+            # convert to a dataclass.
             user_cmd = UserCommand(**data)
             resp = await self.cmdline.handler(user_cmd)
             status = HTTPStatus.OK
@@ -473,6 +470,9 @@ class GCSEHandler:
             resp.error = str(e)
             status = HTTPStatus.NOT_IMPLEMENTED
         except ValueError as e:
+            resp.error = str(e)
+            status = HTTPStatus.BAD_REQUEST
+        except TypeError as e:
             resp.error = str(e)
             status = HTTPStatus.BAD_REQUEST
 

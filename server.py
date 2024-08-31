@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
 
+from jsonconfig import JSONConfig
+from aiohttp import web
+import aiohttp
+from openai.types.chat import ChatCompletionAssistantMessageParam
+from openai.types.chat import ChatCompletionSystemMessageParam
+from openai.types.chat import ChatCompletionUserMessageParam
+from openai.types.chat import ChatCompletionMessageParam
+from openai import AsyncOpenAI
 import sys
 import os
 import time
@@ -10,19 +18,6 @@ import asyncio
 from http import HTTPStatus
 from dataclasses import dataclass, asdict, field
 from typing import Callable, Awaitable
-
-
-from openai import AsyncOpenAI
-from openai.types.chat import ChatCompletionMessageParam
-from openai.types.chat import ChatCompletionUserMessageParam
-from openai.types.chat import ChatCompletionSystemMessageParam
-from openai.types.chat import ChatCompletionAssistantMessageParam
-
-
-import aiohttp
-from aiohttp import web
-
-from jsonconfig import JSONConfig
 
 
 DEF_PORT = 8080
@@ -199,33 +194,33 @@ class UserCommand:
 
 
 @dataclass
-class CmdHandler:
-
-    name: str
-    help: str
-    handler: Callable[[UserCommand], Awaitable[str]]
-    markdown: bool = False
-    hidden: bool = False
-
-
-@dataclass
 class CmdResponse:
     data: str = ""
     markdown: bool = False
     error: str = ""
 
 
+@dataclass
+class CmdHandler:
+
+    name: str
+    help: str
+    handler: Callable[[UserCommand], Awaitable[CmdResponse]]
+    hidden: bool = False
+
+
 class CmdLine:
 
-    def __init__(self, ai: AI) -> None:
+    def __init__(self, config: JSONConfig, ai: AI) -> None:
         self.__ai = ai
 
         self.__commands = [
-            CmdHandler("/help", "This", self.help, True),
-            CmdHandler("/chat", "LLM chat", self.chat, True, True),
+            CmdHandler("/help", "This", self.help),
+            CmdHandler("/bookmarks", "List, add, remove bookmarks", self.book),
+            CmdHandler("/chat", "LLM chat", self.chat, True),
             CmdHandler("/prompt", "Get or change prompt", self.prompt),
-            CmdHandler("/model", "Get current model", self.model, True),
-            CmdHandler("/uptime", "Uptime", self.uptime, True),
+            CmdHandler("/model", "Get current model", self.model),
+            CmdHandler("/uptime", "Uptime", self.uptime),
             CmdHandler("/reset", "Reset output", self.reset),
             CmdHandler("/clear", "Clear output", self.reset),
         ]
@@ -253,7 +248,10 @@ class CmdLine:
 
         return ret, stdout, stderr
 
-    async def help(self, cmd: UserCommand) -> str:
+    async def book(self,  cmd: UserCommand) -> CmdResponse:
+        raise NotImplementedError("Implemented in JS")
+
+    async def help(self, cmd: UserCommand) -> CmdResponse:
 
         help_str = "```\ncommands:\n"
 
@@ -263,9 +261,9 @@ class CmdLine:
 
         help_str += "```"
 
-        return help_str
+        return CmdResponse(help_str, True)
 
-    async def chat(self, cmd: UserCommand) -> str:
+    async def chat(self, cmd: UserCommand) -> CmdResponse:
 
         if "" == cmd.args:
             raise ValueError("Missing message")
@@ -279,37 +277,43 @@ class CmdLine:
 
         resp = await self.__ai.chat(hist)
 
-        return resp.message
+        return CmdResponse(resp.message, True)
 
-    async def prompt(self, cmd: UserCommand) -> str:
+    async def prompt(self, cmd: UserCommand) -> CmdResponse:
 
         if "" != cmd.args:
             self.__ai.set_prompt(cmd.args)
 
-        return self.__ai.get_prompt()
+        return CmdResponse(self.__ai.get_prompt())
 
-    async def model(self, cmd: UserCommand) -> str:
+    async def model(self, cmd: UserCommand) -> CmdResponse:
 
         if "" != cmd.args:
             self.__ai.set_model(cmd.args)
 
-        return self.__ai.get_model()
+        return CmdResponse(self.__ai.get_model())
 
-    async def uptime(self, cmd: UserCommand) -> str:
-        _, uptime, _ = await self.__exec("/usr/bin/uptime")
-        return f"`{uptime}`"
+    async def uptime(self, cmd: UserCommand) -> CmdResponse:
+        _, stdout, _ = await self.__exec("/usr/bin/uptime")
+        return CmdResponse(f"`{stdout}`", True)
 
-    async def reset(self, _: UserCommand) -> str:
+    async def reset(self,  cmd: UserCommand) -> CmdResponse:
         raise NotImplementedError("Should be implemented in JS")
 
     async def handler(self, cmd: UserCommand) -> CmdResponse:
 
         for c in self.__commands:
             if cmd.cmd == c.name:
-                response = await c.handler(cmd)
-                return CmdResponse(response, c.markdown)
+                return await c.handler(cmd)
 
         return CmdResponse(f"Unknown command `{cmd.cmd}`", True)
+
+
+@dataclass
+class Bookmark:
+    url: str
+    name: str = ""
+    shortcut: str | None = None
 
 
 class GoogleRequestHandler:
@@ -333,19 +337,20 @@ class GoogleRequestHandler:
                 return await r.read()
 
 
-class GCSEHandler:
+class SearchAPI:
     def __init__(self) -> None:
         script_root = os.path.dirname(os.path.abspath(sys.argv[0]))
         self.www_root = os.path.join(script_root, "www")
 
         config_file = os.path.join(script_root, "config", "config.json")
+        self.__config = JSONConfig(config_file)
 
-        config = JSONConfig(config_file)
+        self.google_request = GoogleRequestHandler(self.__config)
+        self.ai = AI(self.__config)
+        self.reddit_cache = RedditCache(self.__config, self.ai)
+        self.cmdline = CmdLine(self.__config, self.ai)
 
-        self.google_request = GoogleRequestHandler(config)
-        self.ai = AI(config)
-        self.reddit_cache = RedditCache(config, self.ai)
-        self.cmdline = CmdLine(self.ai)
+        self.bookmarks_lock = asyncio.Lock()
 
     def __get_lucky_url(self, gcse_data: bytes) -> str | None:
 
@@ -361,6 +366,19 @@ class GCSEHandler:
 
         return item["link"]
 
+    async def __find_bookmark(self, q: str) -> Bookmark | None:
+
+        async with self.bookmarks_lock:
+
+            for b in self.__config.get_list("/bookmarks", []):
+
+                bookmark = Bookmark(**b)
+
+                if bookmark.name == q or bookmark.shortcut == q:
+                    return bookmark
+
+            return None
+
     async def __rdr(self, q: str) -> str | None:
 
         location = None
@@ -369,6 +387,10 @@ class GCSEHandler:
             # amazon
             q = q[2:]
             location = f"https://www.amazon.ca/s?k={q}"
+        if q.startswith("b "):
+            b = await self.__find_bookmark(q[2:])
+            if b is not None:
+                location = b.url
         elif q.startswith("c "):
             # chat / ai
             q = q[2:]
@@ -450,6 +472,76 @@ class GCSEHandler:
 
         return web.Response(status=HTTPStatus.NOT_FOUND)
 
+    async def api_bookmarks(self, req: web.Request) -> web.Response:
+
+        async with self.bookmarks_lock:
+            blist = self.__config.get_list("/bookmarks", [])
+
+        return web.json_response(blist)
+
+    async def api_bookmarks_add(self, req: web.Request) -> web.Response:
+
+        error = ""
+
+        try:
+            # this'll make sure we got "something" from the user
+            user_data = await req.json()
+            bookmark = Bookmark(**user_data)
+
+            async with self.bookmarks_lock:
+
+                exists = False
+
+                bookmarks = self.__config.get_list("/bookmarks", [])
+
+                for b in bookmarks:
+
+                    if b["name"] == bookmark.name:
+                        exists = True
+                        break
+
+                if False == exists:
+                    bookmarks.append(asdict(bookmark))
+
+                    self.__config.set("/bookmarks", bookmarks)
+
+            status = HTTPStatus.OK
+        except NotImplementedError as e:
+            error = str(e)
+            status = HTTPStatus.NOT_IMPLEMENTED
+        except ValueError as e:
+            error = str(e)
+            status = HTTPStatus.BAD_REQUEST
+        except TypeError as e:
+            error = str(e)
+            status = HTTPStatus.BAD_REQUEST
+        except Exception as e:
+            status = HTTPStatus.BAD_REQUEST
+
+        return web.Response(text=error, status=status)
+
+    async def api_bookmarks_del(self, req: web.Request) -> web.Response:
+
+        if "name" not in req.rel_url.query:
+            return web.Response(status=HTTPStatus.BAD_REQUEST)
+
+        name = req.rel_url.query["name"]
+
+        async with self.bookmarks_lock:
+
+            status = HTTPStatus.NOT_FOUND
+
+            bookmarks = self.__config.get_list("/bookmarks", [])
+
+            for b in bookmarks:
+                if b["name"] == name:
+                    bookmarks.remove(b)
+                    self.__config.set("/bookmarks", bookmarks)
+                    status = HTTPStatus.OK
+                    break
+
+        return web.Response(status=status)
+
     async def opensearch(self, req: web.Request) -> web.Response:
 
         template = OPEN_SEARCH_TEMPLATE.replace("__HOST__", req.host)
@@ -462,9 +554,9 @@ class GCSEHandler:
 
         try:
             # this'll make sure we got "something" from the user
-            data = await req.json()
+            user_data = await req.json()
             # convert to a dataclass and python will type check for us
-            user_cmd = UserCommand(**data)
+            user_cmd = UserCommand(**user_data)
             resp = await self.cmdline.handler(user_cmd)
             status = HTTPStatus.OK
         except NotImplementedError as e:
@@ -476,26 +568,31 @@ class GCSEHandler:
         except TypeError as e:
             resp.error = str(e)
             status = HTTPStatus.BAD_REQUEST
+        except Exception as e:
+            print(e)
+            status = HTTPStatus.BAD_REQUEST
 
         return web.json_response(asdict(resp), status=status)
 
 
 def run_server(addr: str, port: int) -> None:
 
-    handler = GCSEHandler()
+    handler = SearchAPI()
 
     routes = [
         web.get("/search", handler.search),
         web.get("/opensearch.xml", handler.opensearch),
         web.get("/api/search", handler.api_search),
-        web.get("/{path:.*}", handler.static)
+        web.get("/api/bookmarks", handler.api_bookmarks),
+        web.post("/api/bookmarks/add", handler.api_bookmarks_add),
+        web.get("/api/bookmarks/rem", handler.api_bookmarks_del),
+        web.post("/api/cmd", handler.api_cmd),
+        web.get("/{path:.*}", handler.static),
     ]
 
     app = web.Application()
 
     app.add_routes(routes)
-
-    app.router.add_post("/api/cmd", handler.api_cmd)
 
     web.run_app(app, port=port, host=addr, reuse_address=True)  # type: ignore
 

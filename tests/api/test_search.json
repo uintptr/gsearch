@@ -1,0 +1,18 @@
+{
+    "tests": [
+        {
+            "name": "no request",
+            "url": "/api/search",
+            "method": "GET",
+            "code": 417
+        },
+        {
+            "name": "lucky request",
+            "url": "/api/search",
+            "method": "GET",
+            "data": {
+                "q": "l google"
+            }
+        }
+    ]
+}

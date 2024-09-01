@@ -71,7 +71,9 @@ class Tester:
             url += f"{sep}{p}={test.data[p]}"
             sep = '&'
 
-        self.__do_request(url, test)
+        encoded_url = urllib.parse.quote(url, safe=':/?=&')
+
+        self.__do_request(encoded_url, test)
 
     def __parse_test(self, test: Test) -> str:
 

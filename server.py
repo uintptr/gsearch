@@ -1,13 +1,5 @@
 #!/usr/bin/env python3
 
-from jsonconfig import JSONConfig
-from aiohttp import web
-import aiohttp
-from openai.types.chat import ChatCompletionAssistantMessageParam
-from openai.types.chat import ChatCompletionSystemMessageParam
-from openai.types.chat import ChatCompletionUserMessageParam
-from openai.types.chat import ChatCompletionMessageParam
-from openai import AsyncOpenAI
 import sys
 import os
 import time
@@ -15,6 +7,16 @@ import json
 import errno
 import argparse
 import asyncio
+
+import aiohttp
+from jsonconfig import JSONConfig
+from aiohttp import web
+
+from openai.types.chat import ChatCompletionAssistantMessageParam
+from openai.types.chat import ChatCompletionSystemMessageParam
+from openai.types.chat import ChatCompletionUserMessageParam
+from openai.types.chat import ChatCompletionMessageParam
+from openai import AsyncOpenAI
 from http import HTTPStatus
 from dataclasses import dataclass, asdict, field
 
@@ -73,7 +75,7 @@ class ChatRequest:
         new_history: list[ChatHistory] = []
 
         for h in self.history:
-            new_history.append(ChatHistory(**h))
+            new_history.append(ChatHistory(**h))  # type: ignore
         self.history = new_history
 
 
@@ -379,6 +381,17 @@ class SearchAPI:
 
         q = req.rel_url.query["q"].replace(".", " ")
 
+        location = await self.__rdr(q)
+
+        if location is not None:
+
+            headers = {
+                "Location": location
+            }
+
+            return web.Response(headers=headers, status=HTTPStatus.FOUND)
+
+        # a real search
         data = await self.gcse.get(q)
 
         if (data != b''):

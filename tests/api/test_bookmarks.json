@@ -1,0 +1,12 @@
+{
+    "url": "/api/bookmarks",
+    "method": "GET",
+    "tests": [
+        {
+            "name": "test listing",
+            "data": {
+                "expected_code": 200
+            }
+        }
+    ]
+}

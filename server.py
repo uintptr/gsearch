@@ -17,8 +17,6 @@ import argparse
 import asyncio
 from http import HTTPStatus
 from dataclasses import dataclass, asdict, field
-from typing import Callable, Awaitable
-
 
 DEF_PORT = 8080
 DEF_ADDR = "0.0.0.0"
@@ -41,6 +39,12 @@ def printkv(k: str, v: object) -> None:
 
 
 @dataclass
+class GenericResponse:
+    error: str | None = None
+    data: dict[str, object] = field(default_factory=dict)
+
+
+@dataclass
 class ChatResponse:
     create_ts: float
     response_ts: float
@@ -58,7 +62,14 @@ class ChatHistory:
     ts: float = 0
 
 
-class AI:
+@dataclass
+class ChatRequest:
+    model: str | None = None
+    prompt: str | None = None
+    history: list[ChatHistory] = field(default_factory=list)
+
+
+class Chat:
     def __init__(self, config: JSONConfig) -> None:
 
         self.url = config.get("/openai/url")
@@ -151,13 +162,13 @@ class AI:
 
 class RedditCache:
 
-    def __init__(self, config: JSONConfig, ai: AI) -> None:
+    def __init__(self, config: JSONConfig, chat: Chat) -> None:
 
         self.query_cache = {}
         self.query_cache_lock = asyncio.Lock()
 
         self.config = config
-        self.ai = ai
+        self.chat = chat
 
     async def get_sub_from_string(self, string: str) -> str | None:
 
@@ -177,136 +188,12 @@ class RedditCache:
 
         msg = ChatHistory("user", q)
 
-        r = await self.ai.chat([msg], "you are usefull assistant")
+        r = await self.chat.chat([msg], "you are usefull assistant")
 
         async with self.query_cache_lock:
             self.config.set(f"/reddit/cache/{string}", r.message)
 
         return r.message
-
-
-@dataclass
-class UserCommand:
-
-    cmd: str
-    args: str = ""
-    history: list[dict[str, str]] = field(default_factory=list)
-
-
-@dataclass
-class CmdResponse:
-    data: str = ""
-    markdown: bool = False
-    error: str = ""
-
-
-@dataclass
-class CmdHandler:
-
-    name: str
-    help: str
-    handler: Callable[[UserCommand], Awaitable[CmdResponse]]
-    hidden: bool = False
-
-
-class CmdLine:
-
-    def __init__(self, config: JSONConfig, ai: AI) -> None:
-        self.__ai = ai
-
-        self.__commands = [
-            CmdHandler("/help", "This", self.help),
-            CmdHandler("/bookmarks", "List, add, remove bookmarks", self.book),
-            CmdHandler("/chat", "LLM chat", self.chat, True),
-            CmdHandler("/prompt", "Get or change prompt", self.prompt),
-            CmdHandler("/model", "Get current model", self.model),
-            CmdHandler("/uptime", "Uptime", self.uptime),
-            CmdHandler("/reset", "Reset output", self.reset),
-            CmdHandler("/clear", "Clear output", self.reset),
-        ]
-
-    async def __exec(self, cmd_line: str) -> tuple[int, str, str]:
-
-        ret = 1
-        stdout = ""
-        stderr = ""
-
-        p = await asyncio.create_subprocess_shell(cmd_line,
-                                                  stdout=asyncio.subprocess.PIPE,
-                                                  stderr=asyncio.subprocess.PIPE)
-
-        stdout_buff, stderr_buff = await p.communicate()
-
-        if b'' != stdout_buff:
-            stdout = stdout_buff.decode("utf-8")
-
-        if b'' != stderr_buff:
-            stderr = stderr_buff.decode("utf-8")
-
-        if p.returncode is not None:
-            ret = p.returncode
-
-        return ret, stdout, stderr
-
-    async def book(self,  cmd: UserCommand) -> CmdResponse:
-        raise NotImplementedError("Implemented in JS")
-
-    async def help(self, cmd: UserCommand) -> CmdResponse:
-
-        help_str = "```\ncommands:\n"
-
-        for c in self.__commands:
-            if False == c.hidden:
-                help_str += f"    {c.name:<12}{c.help}\n"
-
-        help_str += "```"
-
-        return CmdResponse(help_str, True)
-
-    async def chat(self, cmd: UserCommand) -> CmdResponse:
-
-        if "" == cmd.args:
-            raise ValueError("Missing message")
-
-        hist: list[ChatHistory] = []
-
-        for c in cmd.history:
-            hist.append(ChatHistory(**c))  # type: ignore
-
-        hist.append(ChatHistory("user", cmd.args))
-
-        resp = await self.__ai.chat(hist)
-
-        return CmdResponse(resp.message, True)
-
-    async def prompt(self, cmd: UserCommand) -> CmdResponse:
-
-        if "" != cmd.args:
-            self.__ai.set_prompt(cmd.args)
-
-        return CmdResponse(self.__ai.get_prompt())
-
-    async def model(self, cmd: UserCommand) -> CmdResponse:
-
-        if "" != cmd.args:
-            self.__ai.set_model(cmd.args)
-
-        return CmdResponse(self.__ai.get_model())
-
-    async def uptime(self, cmd: UserCommand) -> CmdResponse:
-        _, stdout, _ = await self.__exec("/usr/bin/uptime")
-        return CmdResponse(f"`{stdout}`", True)
-
-    async def reset(self,  cmd: UserCommand) -> CmdResponse:
-        raise NotImplementedError("Should be implemented in JS")
-
-    async def handler(self, cmd: UserCommand) -> CmdResponse:
-
-        for c in self.__commands:
-            if cmd.cmd == c.name:
-                return await c.handler(cmd)
-
-        return CmdResponse(f"Unknown command `{cmd.cmd}`", True)
 
 
 @dataclass
@@ -345,10 +232,9 @@ class SearchAPI:
         config_file = os.path.join(script_root, "config", "config.json")
         self.__config = JSONConfig(config_file)
 
-        self.google_request = GoogleRequestHandler(self.__config)
-        self.ai = AI(self.__config)
-        self.reddit_cache = RedditCache(self.__config, self.ai)
-        self.cmdline = CmdLine(self.__config, self.ai)
+        self.gcse = GoogleRequestHandler(self.__config)
+        self.chat = Chat(self.__config)
+        self.reddit_cache = RedditCache(self.__config, self.chat)
 
         self.bookmarks_lock = asyncio.Lock()
 
@@ -405,7 +291,7 @@ class SearchAPI:
             location = f"https://www.google.com/search?q={q}&tbm=isch"
         elif q.startswith("l "):
             # lucky
-            gcse_data = await self.google_request.get(q[2:])
+            gcse_data = await self.gcse.get(q[2:])
             location = self.__get_lucky_url(gcse_data)
         elif q.startswith("m "):
             # maps
@@ -419,10 +305,40 @@ class SearchAPI:
         elif q.startswith("w "):
             # wikipedia
             wq = f"{q[2:]} wikipedia"
-            gcse_data = await self.google_request.get(wq)
+            gcse_data = await self.gcse.get(wq)
             location = self.__get_lucky_url(gcse_data)
 
         return location
+
+    async def __chat_set(self, req: web.Request, value_name: str) -> tuple[HTTPStatus, GenericResponse]:
+
+        status = HTTPStatus.BAD_REQUEST
+
+        resp = GenericResponse()
+
+        try:
+            user_data = await req.json()
+
+            if value_name not in user_data:
+                raise ValueError(f'Missing "{value_name}"')
+
+            value = user_data[value_name]
+
+            if value_name == "model":
+                self.chat.set_model(value)
+            elif value_name == "prompt":
+                self.chat.set_prompt(value)
+            else:
+                raise NotImplementedError(f"{value_name} not implemented")
+
+            status = HTTPStatus.OK
+
+        except ValueError as e:
+            resp.error = str(e)
+        except NotImplementedError as e:
+            resp.error = str(e)
+
+        return status, resp
 
     ############################################################################
     # PUBLIC
@@ -437,40 +353,29 @@ class SearchAPI:
 
         return web.FileResponse(os.path.join(self.www_root, fn))
 
-    async def search(self, req: web.Request) -> web.Response | web.FileResponse:
+    async def opensearch(self, req: web.Request) -> web.Response:
 
-        location = None
-
-        if "q" not in req.rel_url.query:
-            return web.Response(status=HTTPStatus.BAD_REQUEST)
-
-        q = req.rel_url.query["q"].replace(".", " ")  # iphone keyboard
-
-        location = await self.__rdr(q)
-
-        if location is not None:
-
-            headers = {
-                "Location": location
-            }
-
-            return web.Response(headers=headers, status=HTTPStatus.FOUND)
-
-        return web.FileResponse(os.path.join(self.www_root, "index.html"))
+        template = OPEN_SEARCH_TEMPLATE.replace("__HOST__", req.host)
+        template = template.replace("__SCHEME__", req.scheme)
+        return web.Response(text=template, content_type="application/xml")
 
     async def api_search(self, req: web.Request) -> web.Response:
 
         if "q" not in req.rel_url.query:
-            return web.Response(status=HTTPStatus.BAD_REQUEST)
+            return web.Response(status=HTTPStatus.EXPECTATION_FAILED)
 
         q = req.rel_url.query["q"].replace(".", " ")
 
-        data = await self.google_request.get(q)
+        data = await self.gcse.get(q)
 
         if (data != b''):
             return web.Response(body=data, content_type="application/json")
 
         return web.Response(status=HTTPStatus.NOT_FOUND)
+
+    #######################################
+    # BOOKMARKS
+    #######################################
 
     async def api_bookmarks(self, req: web.Request) -> web.Response:
 
@@ -542,36 +447,52 @@ class SearchAPI:
 
         return web.Response(status=status)
 
-    async def opensearch(self, req: web.Request) -> web.Response:
+    #######################################
+    # CHAT
+    #######################################
 
-        template = OPEN_SEARCH_TEMPLATE.replace("__HOST__", req.host)
-        template = template.replace("__SCHEME__", req.scheme)
-        return web.Response(text=template, content_type="application/xml")
+    async def api_chat(self, req: web.Request) -> web.Response:
 
-    async def api_cmd(self, req: web.Request) -> web.Response:
-
-        resp = CmdResponse()
+        resp = GenericResponse()
+        status = HTTPStatus.BAD_REQUEST
 
         try:
-            # this'll make sure we got "something" from the user
             user_data = await req.json()
-            # convert to a dataclass and python will type check for us
-            user_cmd = UserCommand(**user_data)
-            resp = await self.cmdline.handler(user_cmd)
+
+            # type check AND convert to a ChatRequest
+
+            chat_req = ChatRequest(**user_data)
+
+            print(chat_req)
+
             status = HTTPStatus.OK
-        except NotImplementedError as e:
-            resp.error = str(e)
-            status = HTTPStatus.NOT_IMPLEMENTED
         except ValueError as e:
             resp.error = str(e)
-            status = HTTPStatus.BAD_REQUEST
         except TypeError as e:
             resp.error = str(e)
-            status = HTTPStatus.BAD_REQUEST
-        except Exception as e:
-            print(e)
-            status = HTTPStatus.BAD_REQUEST
 
+        return web.json_response(asdict(resp), status=status)
+
+    async def api_chat_model_get(self, req: web.Request) -> web.Response:
+
+        resp = GenericResponse()
+        resp.data = {"model": self.chat.get_model()}
+        return web.json_response(asdict(resp))
+
+    async def api_chat_model_set(self, req: web.Request) -> web.Response:
+
+        status, resp = await self.__chat_set(req, "model")
+        return web.json_response(asdict(resp), status=status)
+
+    async def api_chat_prompt_get(self, req: web.Request) -> web.Response:
+
+        resp = GenericResponse()
+        resp.data = {"prompt": self.chat.get_prompt()}
+        return web.json_response(asdict(resp))
+
+    async def api_chat_prompt_set(self, req: web.Request) -> web.Response:
+
+        status, resp = await self.__chat_set(req, "prompt")
         return web.json_response(asdict(resp), status=status)
 
 
@@ -580,13 +501,25 @@ def run_server(addr: str, port: int) -> None:
     handler = SearchAPI()
 
     routes = [
-        web.get("/search", handler.search),
+        # opensearch
         web.get("/opensearch.xml", handler.opensearch),
+
+        # search
         web.get("/api/search", handler.api_search),
+
+        # bookmarks
         web.get("/api/bookmarks", handler.api_bookmarks),
         web.post("/api/bookmarks/add", handler.api_bookmarks_add),
         web.get("/api/bookmarks/rem", handler.api_bookmarks_del),
-        web.post("/api/cmd", handler.api_cmd),
+
+        # chat
+        web.post("/api/chat", handler.api_chat),
+        web.get("/api/chat/model", handler.api_chat_model_get),
+        web.post("/api/chat/model", handler.api_chat_model_set),
+        web.get("/api/chat/prompt", handler.api_chat_prompt_get),
+        web.post("/api/chat/prompt", handler.api_chat_prompt_set),
+
+        # static file handler
         web.get("/{path:.*}", handler.static),
     ]
 

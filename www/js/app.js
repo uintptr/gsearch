@@ -248,6 +248,52 @@ function get_chat_context(container) {
     return context_list
 }
 
+
+/**
+* @returns {Promise<string | null>}
+*/
+async function bookmarks_list() {
+    let res_str = null
+
+    const url = "/api/bookmaks"
+
+    const bookmarks = await utils.fetch_as_json("/api/bookmarks")
+
+    if (null != bookmarks && bookmarks.length > 0) {
+
+        res_str = "| Name | Shortcut | URL |\n"
+        res_str += "|:------|:----------|:-----|\n"
+
+        bookmarks.forEach(item => {
+            res_str += `|${item["name"]}|${item["shortcut"]}|${item["url"]}|\n`
+        })
+    }
+
+    console.log(res_str)
+
+    return res_str
+}
+
+/**
+* @param {string| null} params
+* @returns {Promise<string | null>}
+*/
+async function bookmarks_command(params) {
+    let res_str = null
+
+    if (null == params) {
+        res_str = await bookmarks_list()
+    }
+    else if (params.startsWith("add")) {
+    }
+    else if (params.startsWith("rem")) {
+    }
+
+    return res_str
+}
+
+
+
 /**
 * @param {HTMLElement} container
 * @param {string} user_input
@@ -257,15 +303,10 @@ async function on_chat_cb(container, user_input) {
     let req = {}
     let chat_source = null
     let markdown = false
+    let res_str = null
 
     if (user_input.startsWith("/")) {
         const cmd_name = user_input.split(' ', 1)[0]
-
-        if (cmd_name.startsWith("/reset") || cmd_name.startsWith("/clear")) {
-            utils.remove_all_children(container)
-            utils.hide_element(container)
-            return
-        }
 
         req["cmd"] = cmd_name
 
@@ -283,19 +324,38 @@ async function on_chat_cb(container, user_input) {
         add_chat_response(container, user_input, true, "user")
     }
 
-    let res = await utils.fetch_post_json("/api/cmd", req)
+    if (req["cmd"] == "/reset" || req["cmd"] == "/clear") {
+        utils.remove_all_children(container)
+        utils.hide_element(container)
+    }
+    else if (req["cmd"] == "/bookmarks") {
 
-    if ("error" in res && "" != res["error"]) {
-        console.error(res["error"])
+        let args = null
+
+        if ("args" in req) {
+            args = req["args"]
+        }
+
+        res_str = await bookmarks_command(args)
+        markdown = true
+    }
+    else {
+        let res = await utils.fetch_post_json("/api/cmd", req)
+
+        if ("error" in res && "" != res["error"]) {
+            console.error(res["error"])
+        }
+
+        res_str = res["data"]
+
+        if ("markdown" in res) {
+            markdown = res["markdown"]
+        }
     }
 
-    let res_str = res["data"]
-
-    if ("markdown" in res) {
-        markdown = res["markdown"]
+    if (null != res_str) {
+        add_chat_response(container, res_str, markdown, chat_source)
     }
-
-    add_chat_response(container, res_str, markdown, chat_source)
 }
 
 

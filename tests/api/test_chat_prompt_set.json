@@ -1,0 +1,24 @@
+{
+    "url": "/api/chat/prompt",
+    "method": "POST",
+    "tests": [
+        {
+            "name": "test prompt set good",
+            "data": {
+                "expected_code": 200,
+                "post_data": {
+                    "prompt": "you're a useful assistant"
+                }
+            }
+        },
+        {
+            "name": "test prompt set bad",
+            "data": {
+                "expected_code": 400,
+                "post_data": {
+                    "bleh": "gpt-4o"
+                }
+            }
+        }
+    ]
+}

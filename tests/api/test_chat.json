@@ -1,0 +1,32 @@
+{
+    "tests": [
+        {
+            "name": "With model and prompt",
+            "url": "/api/chat",
+            "method": "POST",
+            "data": {
+                "model": "gpt-3.5-turbo",
+                "prompt": "You are helpful assistant",
+                "history": [
+                    {
+                        "role": "user",
+                        "content": "Hello World in python"
+                    }
+                ]
+            }
+        },
+        {
+            "name": "with default prompt and model",
+            "url": "/api/chat",
+            "method": "POST",
+            "data": {
+                "history": [
+                    {
+                        "role": "user",
+                        "content": "Hello World in python"
+                    }
+                ]
+            }
+        }
+    ]
+}

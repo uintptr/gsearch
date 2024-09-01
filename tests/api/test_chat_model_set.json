@@ -1,23 +1,20 @@
 {
-    "url": "/api/chat/model",
-    "method": "POST",
     "tests": [
         {
             "name": "test model set good",
+            "url": "/api/chat/model",
+            "method": "POST",
             "data": {
-                "expected_code": 200,
-                "post_data": {
-                    "model": "gpt-4o"
-                }
+                "model": "gpt-4o"
             }
         },
         {
             "name": "test model set bad",
+            "url": "/api/chat/model",
+            "method": "POST",
+            "code": 400,
             "data": {
-                "expected_code": 400,
-                "post_data": {
-                    "bleh": "gpt-4o"
-                }
+                "bleh": "gpt-4o"
             }
         }
     ]

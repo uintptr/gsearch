@@ -17,39 +17,12 @@ DEF_SERVER = "http://localhost:8080"
 
 
 @dataclass
-class TestParam:
-    key: str
-    value: Any
-
-
-@dataclass
-class TestData:
-    expected_code: int = 200
-    params: list[TestParam] = field(default_factory=list)
-    post_data: dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass
 class Test:
-    name: str
-    data: TestData
-
-    def __post_init__(self) -> None:
-        self.data = TestData(**self.data)  # type: ignore
-
-
-@dataclass
-class TestDefinition:
-
     url: str
     method: str
-    tests: list[Test] = field(default_factory=list)
-
-    def __post_init__(self) -> None:
-        new_tests: list[Test] = []
-        for t in self.tests:
-            new_tests.append(Test(**t))  # type: ignore
-        self.tests = new_tests
+    name: str
+    code: int = 200
+    data: dict[str, Any] = field(default_factory=dict)
 
 
 def printkv(k: str, v: object) -> None:
@@ -69,7 +42,7 @@ class Tester:
         self.server = server
         self.test_id = 0
 
-    def __do_request(self, url: str | urllib.request.Request, test: TestData) -> None:
+    def __do_request(self, url: str | urllib.request.Request, test: Test) -> None:
 
         code = 0
 
@@ -79,33 +52,39 @@ class Tester:
         except urllib.error.HTTPError as e:
             code = e.code
 
-        err_str = f"{code} != {test.expected_code}"
+        err_str = f"{code} != {test.code}"
 
-        assert code == test.expected_code, err_str
+        assert code == test.code, err_str
 
-    def __parse_test_post(self, url: str, test: TestData) -> None:
+    def __parse_test_post(self, url: str, test: Test) -> None:
 
         headers = {'Content-Type': 'application/json'}
-        data = json.dumps(test.post_data).encode("utf-8")
+        data = json.dumps(test.data).encode("utf-8")
 
         req = urllib.request.Request(url, data=data, headers=headers)
         self.__do_request(req, test)
 
-    def __parse_test_get(self, url: str, test: TestData) -> None:
+    def __parse_test_get(self, url: str, test: Test) -> None:
+
+        sep = '?'
+        for p in test.data:
+            url += f"{sep}{p}={test.data[p]}"
+            sep = '&'
+
         self.__do_request(url, test)
 
-    def __parse_test(self, url: str, method: str, data: TestData) -> str:
+    def __parse_test(self, test: Test) -> str:
 
-        full_url = f"{self.server}{url}"
+        full_url = f"{self.server}{test.url}"
 
         try:
 
-            if "GET" == method:
-                self.__parse_test_get(full_url, data)
-            elif "POST" == method:
-                self.__parse_test_post(full_url, data)
+            if "GET" == test.method:
+                self.__parse_test_get(full_url, test)
+            elif "POST" == test.method:
+                self.__parse_test_post(full_url, test)
             else:
-                raise NotImplementedError(f"method={method}  not implemented")
+                raise NotImplementedError(f"{test.method} not implemented")
 
             status = "SUCCESS"
         except Exception as e:
@@ -115,18 +94,22 @@ class Tester:
 
     def test_file(self, file_path: str) -> None:
 
-        with open(file_path) as f:
-            test_data = json.load(f)
+        try:
+            with open(file_path) as f:
+                test_data = json.load(f)
 
-        td = TestDefinition(**test_data)
+            fn = os.path.basename(file_path)
 
-        fn = os.path.basename(file_path)
+            for i in test_data["tests"]:
 
-        for t in td.tests:
+                t = Test(**i)
 
-            status = self.__parse_test(td.url, td.method, t.data)
-            print_result(self.test_id, fn, t.name, status)
-            self.test_id += 1
+                status = self.__parse_test(t)
+
+                print_result(self.test_id, fn, t.name, status)
+                self.test_id += 1
+        except TypeError as e:
+            print(f"Unable to parse {file_path} ({e})")
 
     def test_directory(self, dir_path: str) -> None:
 

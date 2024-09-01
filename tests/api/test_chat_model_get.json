@@ -1,12 +1,10 @@
 {
-    "url": "/api/chat/model",
-    "method": "GET",
     "tests": [
         {
             "name": "test model get",
-            "data": {
-                "expected_code": 200
-            }
+            "url": "/api/chat/model",
+            "method": "GET",
+            "code": 200
         }
     ]
 }

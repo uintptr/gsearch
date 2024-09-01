@@ -68,6 +68,14 @@ class ChatRequest:
     prompt: str | None = None
     history: list[ChatHistory] = field(default_factory=list)
 
+    def __post_init__(self) -> None:
+
+        new_history: list[ChatHistory] = []
+
+        for h in self.history:
+            new_history.append(ChatHistory(**h))
+        self.history = new_history
+
 
 class Chat:
     def __init__(self, config: JSONConfig) -> None:
@@ -104,16 +112,21 @@ class Chat:
                                                                 file=f)
             return res.text
 
-    async def chat(self, history: list[ChatHistory] = [], prompt: str | None = None) -> ChatResponse:
+    async def chat(self, history: list[ChatHistory] = [], user_prompt: str | None = None, user_model: str | None = None) -> ChatResponse:
 
         messages: list[ChatCompletionMessageParam] = []
 
-        if prompt is not None:
-            system = prompt
+        if user_prompt is None:
+            prompt = self.system
         else:
-            system = self.system
+            prompt = user_prompt
 
-        s = ChatCompletionSystemMessageParam(content=system, role="system")
+        if user_model is None:
+            model = self.model
+        else:
+            model = user_model
+
+        s = ChatCompletionSystemMessageParam(content=prompt, role="system")
 
         messages.append(s)
 
@@ -132,7 +145,7 @@ class Chat:
 
         create_ts = time.time()
 
-        comp = await self.client.chat.completions.create(model=self.model,
+        comp = await self.client.chat.completions.create(model=model,
                                                          temperature=self.temperature,
                                                          messages=messages)
 
@@ -463,7 +476,11 @@ class SearchAPI:
 
             chat_req = ChatRequest(**user_data)
 
-            print(chat_req)
+            chat_resp = await self.chat.chat(chat_req.history,
+                                             chat_req.prompt,
+                                             chat_req.model)
+
+            resp.data = asdict(chat_resp)
 
             status = HTTPStatus.OK
         except ValueError as e:
@@ -510,7 +527,7 @@ def run_server(addr: str, port: int) -> None:
         # bookmarks
         web.get("/api/bookmarks", handler.api_bookmarks),
         web.post("/api/bookmarks/add", handler.api_bookmarks_add),
-        web.get("/api/bookmarks/rem", handler.api_bookmarks_del),
+        web.get("/api/bookmarks/del", handler.api_bookmarks_del),
 
         # chat
         web.post("/api/chat", handler.api_chat),

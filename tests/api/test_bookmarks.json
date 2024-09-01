@@ -1,11 +1,36 @@
 {
-    "url": "/api/bookmarks",
-    "method": "GET",
     "tests": [
         {
             "name": "test listing",
+            "url": "/api/bookmarks",
+            "method": "GET",
+            "code": 200
+        },
+        {
+            "name": "del unknown",
+            "url": "/api/bookmarks/del",
+            "method": "GET",
+            "code": 404,
             "data": {
-                "expected_code": 200
+                "name": "bleh"
+            }
+        },
+        {
+            "name": "add bleh",
+            "url": "/api/bookmarks/add",
+            "method": "POST",
+            "data": {
+                "url": "http://bleh.com",
+                "name": "bleh",
+                "shortcut": "b"
+            }
+        },
+        {
+            "name": "del bleh",
+            "url": "/api/bookmarks/del",
+            "method": "GET",
+            "data": {
+                "name": "bleh"
             }
         }
     ]

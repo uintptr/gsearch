@@ -1,0 +1,10 @@
+{
+    "tests": [
+        {
+            "name": "test model get",
+            "url": "/api/chat/model",
+            "method": "GET",
+            "code": 200
+        }
+    ]
+}

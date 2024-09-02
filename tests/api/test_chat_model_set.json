@@ -1,0 +1,21 @@
+{
+    "tests": [
+        {
+            "name": "test model set good",
+            "url": "/api/chat/model",
+            "method": "POST",
+            "data": {
+                "model": "gpt-4o"
+            }
+        },
+        {
+            "name": "test model set bad",
+            "url": "/api/chat/model",
+            "method": "POST",
+            "code": 400,
+            "data": {
+                "bleh": "gpt-4o"
+            }
+        }
+    ]
+}

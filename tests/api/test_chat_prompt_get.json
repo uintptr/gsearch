@@ -1,0 +1,9 @@
+{
+    "tests": [
+        {
+            "name": "test prompt get",
+            "url": "/api/chat/model",
+            "method": "GET"
+        }
+    ]
+}

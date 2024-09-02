@@ -4,22 +4,6 @@ import * as utils from "./utils.js"
 
 export { }
 
-/**
- * @param {string} q
- * @returns {Promise<string | null>}
-*/
-async function chat(q) {
-
-    const url = "/api/chat?q=" + q
-
-    let results = await utils.fetch_as_json(url)
-
-    if (null != results) {
-        return results["content"]
-    }
-
-    return null
-}
 
 /**
  * @param {any} item
@@ -46,7 +30,6 @@ function new_search_card(item, name) {
 
             title.setAttribute("href", link)
         }
-
 
         let url = new URL(link)
 
@@ -100,126 +83,6 @@ async function issue_query(container, q) {
 }
 
 /**
- * @param {string} title
- * @param {string} url
- */
-function update_url_bar(title, url) {
-    window.history.pushState({ page: url }, title, url);
-    document.title = title
-
-}
-
-/**
- * @param {HTMLElement} container
- * @param {HTMLInputElement} search_input
- */
-async function onenter_cb(container, search_input) {
-
-    const newUrl = '/search?q=' + search_input.value
-    const pageTitle = 'Results for ' + search_input.value
-
-    update_url_bar(pageTitle, newUrl)
-
-    utils.remove_all_children(container)
-    container.setAttribute("q", "")
-    utils.hide_element(container)
-
-    if (search_input.value.length < 2) {
-        // input too short to return anything meaningful
-    }
-    else {
-
-        container.setAttribute("q", search_input.value)
-        await issue_query(container, search_input.value)
-    }
-}
-
-
-/**
- * @param {string | null} q
- */
-function init_search_bar(q) {
-
-    const container = document.getElementById('results')
-
-    if (container != null && container instanceof HTMLElement) {
-
-        const search_input = document.getElementById('search-input');
-
-        if (search_input != null && search_input instanceof HTMLInputElement) {
-
-            search_input.addEventListener("keyup", function (e) {
-                if (e.key == "Enter") {
-                    //
-                    // hide the keyboard
-                    //
-                    if (true == utils.isMobile()) {
-                        search_input.blur()
-                    }
-                    onenter_cb(container, search_input)
-                }
-                else if (e.key == "Escape") {
-                    search_input.value = ""
-                }
-            })
-
-            if (null != q) {
-                search_input.value = q
-                onenter_cb(container, search_input)
-            }
-        }
-        else {
-            console.error("couldn't find the search input")
-        }
-    }
-    else {
-        console.error("couldn't find the result container")
-    }
-}
-
-/**
- * @param {HTMLElement} container
- * @param {string} response
- * @param {boolean} markdown
- * @param {string | null} chat_source
- */
-function add_chat_response(container, response, markdown, chat_source = null) {
-
-    utils.show_element(container)
-
-    const result = utils.new_template("search_result")
-
-    if (null != result) {
-
-        // to rebuild the context
-        if (null != chat_source) {
-            result.setAttribute("chat-source", chat_source)
-            result.setAttribute("chat-data", response)
-        }
-
-        const text_container = result.querySelector("#chat_text")
-
-        if (text_container != null && text_container instanceof HTMLElement) {
-
-            if (true == markdown) {
-                text_container.innerHTML = marked.parse(response) // @ts-ignore
-            }
-            else {
-                text_container.innerText = response
-            }
-
-            container.appendChild(result)
-        }
-        else {
-            console.error("unable to find text container")
-        }
-    }
-    else {
-        console.error("couldn't find template")
-    }
-}
-
-/**
 * @param {HTMLElement} container
 * @returns {Object[]}
 */
@@ -248,155 +111,302 @@ function get_chat_context(container) {
     return context_list
 }
 
+
 /**
-* @param {HTMLElement} container
-* @param {string} user_input
-*/
-async function on_chat_cb(container, user_input) {
+ * @param {HTMLElement} container
+ * @param {string} response
+ * @param {boolean} markdown
+ * @param {string | null} chat_source
+ */
+function add_command_response(container, response, markdown = false, chat_source = null) {
 
-    let req = {}
-    let chat_source = null
-    let markdown = false
+    utils.show_element(container)
 
-    if (user_input.startsWith("/")) {
-        const cmd_name = user_input.split(' ', 1)[0]
+    const result = utils.new_template("command_result")
 
-        if (cmd_name.startsWith("/reset") || cmd_name.startsWith("/clear")) {
-            utils.remove_all_children(container)
-            utils.hide_element(container)
-            return
+    if (null != result) {
+
+        // to rebuild the context
+        if (null != chat_source) {
+            result.setAttribute("chat-source", chat_source)
+            result.setAttribute("chat-data", response)
         }
 
-        req["cmd"] = cmd_name
+        const text_container = result.querySelector("#command_text")
 
-        if (user_input.length > cmd_name.length) {
-            req["args"] = user_input.substring(cmd_name.length + 1)
+        if (text_container != null && text_container instanceof HTMLElement) {
+
+            if (true == markdown) {
+                text_container.innerHTML = marked.parse(response) // @ts-ignore
+            }
+            else {
+                text_container.innerText = response
+            }
+
+            container.appendChild(result)
+        }
+        else {
+            console.error("unable to find text container")
         }
     }
     else {
-        chat_source = "system"
-
-        req["cmd"] = "/chat"
-        req["args"] = user_input
-        req["history"] = get_chat_context(container)
-
-        add_chat_response(container, user_input, true, "user")
+        console.error("couldn't find template")
     }
-
-    let res = await utils.fetch_post_json("/api/cmd", req)
-
-    if ("error" in res && "" != res["error"]) {
-        console.error(res["error"])
-    }
-
-    let res_str = res["data"]
-
-    if ("markdown" in res) {
-        markdown = res["markdown"]
-    }
-
-    add_chat_response(container, res_str, markdown, chat_source)
 }
 
+
+/**
+ * @param {HTMLElement} container
+ * @param {string} cmdline
+*/
+async function command_help(container, cmdline) {
+    let ret = "```\n"
+
+    ret += "commands:\n"
+
+    for (const key in g_commands) {
+        const value = g_commands[key]["help"]
+        ret += `    ${key.padEnd(10)}${value}\n`
+    }
+
+    ret += "```"
+
+    add_command_response(container, ret, true)
+}
+
+
+/**
+ * @param {HTMLElement} container
+ * @param {string} cmdline
+*/
+async function command_search(container, cmdline) {
+
+    add_command_response(container, "results for \"`" + cmdline + "`\"", true)
+    await issue_query(container, cmdline)
+}
+
+/**
+ * @param {HTMLElement} container
+ * @param {string} cmdline
+*/
+async function command_chat(container, cmdline) {
+
+    let history = get_chat_context(container)
+
+    add_command_response(container, cmdline, true, "user")
+
+    const new_entry = {
+        "role": "user",
+        "content": cmdline
+    }
+
+    history.push(new_entry)
+
+    const chat_req = {
+        "history": history
+    }
+
+    let chat_res = await utils.fetch_post_json("/api/chat", chat_req)
+
+    if ("data" in chat_res && "message" in chat_res["data"]) {
+        const message = chat_res["data"]["message"]
+        add_command_response(container, message, true, "system")
+    }
+    else {
+        console.error("message not in response")
+    }
+}
+
+/**
+ * @param {HTMLElement} container
+ * @param {string} cmdline
+*/
+async function command_model(container, cmdline) {
+
+    let res = null
+
+    if (null == cmdline || 0 == cmdline.length) {
+        res = await utils.fetch_as_json("/api/chat/model")
+    }
+    else {
+        const req = {
+            "model": cmdline
+        }
+        res = await utils.fetch_post_json("/api/chat/model", req)
+    }
+
+    if (res != null && "data" in res && "model" in res["data"]) {
+        add_command_response(container, "model: " + res.data.model)
+    }
+}
+
+
+/**
+ * @param {HTMLElement} container
+ * @param {string} cmdline
+*/
+async function command_prompt(container, cmdline) {
+
+    let res = null
+
+    if (null == cmdline || 0 == cmdline.length) {
+        res = await utils.fetch_as_json("/api/chat/prompt")
+    }
+    else {
+        const req = {
+            "prompt": cmdline
+        }
+        res = await utils.fetch_post_json("/api/chat/prompt", req)
+    }
+
+    if (res != null && "data" in res && "prompt" in res["data"]) {
+        add_command_response(container, "prompt: " + res.data.prompt)
+    }
+}
+
+
+/**
+ * @param {HTMLElement} container
+ * @param {string} cmdline
+*/
+async function command_reset(container, cmdline) {
+    utils.remove_all_children(container)
+    utils.hide_element(container)
+}
+
+const g_commands = {
+    "/help":
+    {
+        "help": "This help",
+        "callback": command_help
+    },
+    "/chat":
+    {
+        "help": "chat with the LLM and hope for the best ¯\\_(ツ)_/¯",
+        "callback": command_chat
+    },
+    "/reset":
+    {
+        "help": "reset the output window",
+        "callback": command_reset
+    },
+    "/search":
+    {
+        "help": "Search using GCSE",
+        "callback": command_search
+    },
+    "/model":
+    {
+        "help": "Get or set the chat model",
+        "callback": command_model
+    },
+    "/prompt":
+    {
+        "help": "Get or set the chat prompt",
+        "callback": command_prompt
+    }
+}
+
+/**
+* @param {string} cmd_line
+*/
+async function command_line_parser(cmd_line) {
+
+    if (0 == cmd_line.length) {
+        return
+    }
+
+    const results = document.getElementById("results")
+
+    if (results != null && results instanceof HTMLElement) {
+
+        if (true == cmd_line.startsWith("/")) {
+
+            const comp = cmd_line.split(/\s+/);
+
+            for (const key in g_commands) {
+
+                const value = g_commands[key]
+
+                if (key == comp[0]) {
+                    const args = cmd_line.substring(comp[0].length + 1)
+                    await value.callback(results, args)
+                }
+            }
+        }
+        else {
+            // assume this is a chat request
+            await command_line_parser("/chat " + cmd_line)
+        }
+    }
+    else {
+        console.error("unable to find results container")
+    }
+}
 
 function init_cmd_line() {
 
-    const results_container = document.getElementById("results")
+    const cmd_input = document.getElementById('cmd_line');
 
-    if (results_container != null && results_container instanceof HTMLElement) {
+    if (cmd_input != null && cmd_input instanceof HTMLInputElement) {
 
-        const cmd_input = document.getElementById('cmd_line');
+        document.addEventListener('keydown', function (event) {
 
-        if (cmd_input != null && cmd_input instanceof HTMLInputElement) {
+            if (event.ctrlKey) {
+                return
+            }
 
-            document.addEventListener('keydown', function (event) {
+            cmd_input.focus()
+        });
 
-                if (event.ctrlKey) {
-                    return
+        cmd_input.addEventListener("keyup", async function (e) {
+            if (e.key == "Enter") {
+
+                //
+                // hide the keyboard
+                //
+                if (true == utils.isMobile()) {
+                    cmd_input.blur()
                 }
 
-                cmd_input.focus()
-            });
+                const cmd_line = cmd_input.value
+                cmd_input.value = ""
 
-            cmd_input.addEventListener("keyup", async function (e) {
-                if (e.key == "Enter") {
-
-                    //
-                    // hide the keyboard
-                    //
-                    if (true == utils.isMobile()) {
-                        cmd_input.blur()
-                    }
-
-                    const cmd_line = cmd_input.value
-                    cmd_input.value = ""
-
-                    if (cmd_line.length > 0) {
-                        await on_chat_cb(results_container, cmd_line)
-                    }
+                if (cmd_line.length > 0) {
+                    await command_line_parser(cmd_line)
                 }
-                else if (e.key == "Escape") {
-                    cmd_input.value = ""
-                }
-            })
-        }
-        else {
-            console.error("couldn't find the search input")
-        }
-    }
-}
-
-
-/**
- * @param {string} q
- */
-async function process_main_query(q) {
-
-    const result = document.getElementById("results")
-
-    if (result != null && result instanceof HTMLElement) {
-
-        add_chat_response(result, q, false, "user")
-
-        const req = {
-            "cmd": "/chat",
-            "args": q
-        }
-
-        let res = await utils.fetch_post_json("/api/cmd", req)
-        let response = "😢"
-
-        if (null != res) {
-            response = res["data"]
-        }
-
-        add_chat_response(result, response, true, "system")
+            }
+            else if (e.key == "Escape") {
+                cmd_input.value = ""
+            }
+        })
     }
     else {
-        console.error("couldn't find results")
+        console.error("couldn't find the search input")
     }
 }
 
 async function main() {
 
-    var q = null
 
     const search = window.location.search;
 
+    init_cmd_line()
+
     if (search != null && search.length > 0) {
         const urlParams = new URLSearchParams(search);
-        q = urlParams.get('q')
-    }
 
-    if (window.location.pathname == "/chat.html") {
-        init_cmd_line()
+        const q = urlParams.get('q')
 
         if (null != q) {
-            await process_main_query(q)
+            await command_line_parser("/search " + q)
         }
-    }
-    else {
-        init_search_bar(q)
+
+        const c = urlParams.get("c")
+
+        if (null != c) {
+            await command_line_parser("/chat " + c)
+        }
     }
 }
 

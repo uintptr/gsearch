@@ -1,0 +1,21 @@
+{
+    "tests": [
+        {
+            "name": "test prompt set good",
+            "url": "/api/chat/prompt",
+            "method": "POST",
+            "data": {
+                "prompt": "you're a useful assistant"
+            }
+        },
+        {
+            "name": "test prompt set bad",
+            "url": "/api/chat/prompt",
+            "method": "POST",
+            "code": 400,
+            "data": {
+                "bleh": "gpt-4o"
+            }
+        }
+    ]
+}

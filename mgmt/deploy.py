@@ -137,10 +137,10 @@ def main() -> int:
 
     try:
         docker_stop(args.name)
-        docker_build_image(args.root, args.image)
-        docker_image_prune(args.image)
 
         if False == args.stop:
+            docker_build_image(args.root, args.image)
+            docker_image_prune(args.image)
             docker_start(app_root, args.name, args.image, args.port)
         status = 0
     except Exception as e:

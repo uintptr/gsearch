@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from email import header
 import sys
 import os
 import time
@@ -374,22 +375,32 @@ class SearchAPI:
         template = template.replace("__SCHEME__", req.scheme)
         return web.Response(text=template, content_type="application/xml")
 
+    async def search(self, req: web.Request) -> web.Response:
+
+        if "q" not in req.rel_url.query:
+            return web.Response(status=HTTPStatus.EXPECTATION_FAILED)
+
+        # it's an iOS thing
+        q = req.rel_url.query["q"].replace(".", " ")
+
+        location = await self.__rdr(q)
+
+        if location is None:
+            location = f"/index.html?q={q}"
+
+        headers = {
+            "Location": location
+        }
+
+        return web.Response(headers=headers, status=HTTPStatus.FOUND)
+
     async def api_search(self, req: web.Request) -> web.Response:
 
         if "q" not in req.rel_url.query:
             return web.Response(status=HTTPStatus.EXPECTATION_FAILED)
 
+        # it's an iOS thing
         q = req.rel_url.query["q"].replace(".", " ")
-
-        location = await self.__rdr(q)
-
-        if location is not None:
-
-            headers = {
-                "Location": location
-            }
-
-            return web.Response(headers=headers, status=HTTPStatus.FOUND)
 
         # a real search
         data = await self.gcse.get(q)
@@ -533,6 +544,7 @@ def run_server(addr: str, port: int) -> None:
     routes = [
         # opensearch
         web.get("/opensearch.xml", handler.opensearch),
+        web.get("/search", handler.search),
 
         # search
         web.get("/api/search", handler.api_search),

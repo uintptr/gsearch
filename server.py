@@ -318,7 +318,7 @@ class SearchAPI:
             # reddit
             sub = await self.reddit_cache.get_sub_from_string(q[2:])
             if sub is not None:
-                location = f"https://old.reddit.com{sub}"
+                location = f"https://old.reddit.com{sub}/"
         elif q.startswith("w "):
             # wikipedia
             wq = f"{q[2:]} wikipedia"

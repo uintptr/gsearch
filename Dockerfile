@@ -9,12 +9,13 @@ COPY server.py          /app/server.py
 COPY requirements.txt   /app/requirements.txt
 COPY www                /app/www
 
+RUN echo "nameserver 1.1.1.1" > /etc/resolv.conf && \
+    pip install --no-cache-dir -r requirements.txt
+
 # Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 RUN rm -f /app/requirements.txt
-
-RUN ls -l /app
 
 # Make port 8080 available to the world outside this container
 EXPOSE 8080

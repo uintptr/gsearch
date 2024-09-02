@@ -108,25 +108,25 @@ def main() -> int:
                         "-n",
                         type=str,
                         default=DEF_DOCKER_PROC_NAME,
-                        help=f"Docker name. Default {DEF_DOCKER_PROC_NAME}")
+                        help=f"Docker name. Default: {DEF_DOCKER_PROC_NAME}")
 
     parser.add_argument("--root",
                         "-r",
                         type=str,
                         default=app_root,
-                        help=f"App root. Default {app_root}")
+                        help=f"App root. Default: {app_root}")
 
     parser.add_argument("--image",
                         "-i",
                         type=str,
                         default=DEF_DOCKER_IMG_NAME,
-                        help=f"Image name. Default {DEF_DOCKER_IMG_NAME}")
+                        help=f"Image name. Default: {DEF_DOCKER_IMG_NAME}")
 
     parser.add_argument("--port",
                         "-p",
                         type=int,
                         default=DEF_DOCKER_PORT,
-                        help=f"Listening port. Default {DEF_DOCKER_PORT}")
+                        help=f"Listening port. Default: {DEF_DOCKER_PORT}")
 
     parser.add_argument("--stop",
                         action="store_true",

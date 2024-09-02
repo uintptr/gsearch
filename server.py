@@ -286,8 +286,6 @@ class SearchAPI:
 
         location = None
 
-        q = q.rstrip()
-
         if q.startswith("a "):
             # amazon
             q = q[2:]
@@ -388,7 +386,7 @@ class SearchAPI:
             return web.Response(status=HTTPStatus.EXPECTATION_FAILED)
 
         # it's an iOS thing
-        q = req.rel_url.query["q"].replace(".", " ")
+        q = req.rel_url.query["q"].replace(".", " ").rstrip()
 
         location = await self.__rdr(q)
 
@@ -408,7 +406,7 @@ class SearchAPI:
             return web.Response(status=HTTPStatus.EXPECTATION_FAILED)
 
         # it's an iOS thing
-        q = req.rel_url.query["q"].replace(".", " ")
+        q = req.rel_url.query["q"].replace(".", " ").rstrip()
 
         # a real search
         data = await self.gcse.get(q)
@@ -475,7 +473,7 @@ class SearchAPI:
         if "name" not in req.rel_url.query:
             return web.Response(status=HTTPStatus.BAD_REQUEST)
 
-        name = req.rel_url.query["name"]
+        name = req.rel_url.query["name"].rstrip()
 
         async with self.bookmarks_lock:
 

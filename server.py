@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from email import header
 import sys
 import os
 import time
@@ -8,6 +7,8 @@ import json
 import errno
 import argparse
 import asyncio
+
+import urllib.parse
 
 import aiohttp
 from jsonconfig import JSONConfig
@@ -387,6 +388,7 @@ class SearchAPI:
 
         if location is None:
             location = f"/index.html?q={q}"
+            location = urllib.parse.quote(location, safe=':/?=&')
 
         headers = {
             "Location": location

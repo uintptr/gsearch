@@ -201,15 +201,12 @@ async function command_chat(container, cmdline) {
     }
 
     history.push(new_entry)
-    console.log(history)
 
     const chat_req = {
         "history": history
     }
 
     let chat_res = await utils.fetch_post_json("/api/chat", chat_req)
-
-    console.log(chat_res)
 
     if ("data" in chat_res && "message" in chat_res["data"]) {
         const message = chat_res["data"]["message"]
@@ -333,7 +330,6 @@ function init_cmd_line() {
 
 async function main() {
 
-    var q = null
 
     const search = window.location.search;
 
@@ -341,8 +337,18 @@ async function main() {
 
     if (search != null && search.length > 0) {
         const urlParams = new URLSearchParams(search);
-        q = urlParams.get('q')
-        await command_line_parser("/search " + q)
+
+        const q = urlParams.get('q')
+
+        if (null != q) {
+            await command_line_parser("/search " + q)
+        }
+
+        const c = urlParams.get("c")
+
+        if (null != c) {
+            await command_line_parser("/chat " + c)
+        }
     }
 }
 

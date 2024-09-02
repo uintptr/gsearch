@@ -297,7 +297,7 @@ class SearchAPI:
         elif q.startswith("c "):
             # chat / ai
             q = q[2:]
-            location = f"/chat.html?q={q}"
+            location = f"/index.html?c={q}"
         elif q.startswith("g "):
             # google
             q = q[2:]

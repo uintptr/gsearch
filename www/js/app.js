@@ -2,6 +2,8 @@
 
 import * as utils from "./utils.js"
 
+const marked = window["marked"]
+
 export { }
 
 
@@ -137,7 +139,7 @@ function add_command_response(container, response, markdown = false, chat_source
         if (text_container != null && text_container instanceof HTMLElement) {
 
             if (true == markdown) {
-                text_container.innerHTML = marked.parse(response) // @ts-ignore
+                text_container.innerHTML = marked.parse(response)
             }
             else {
                 text_container.innerText = response

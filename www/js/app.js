@@ -331,8 +331,12 @@ async function command_line_parser(cmd_line) {
                 if (key == comp[0]) {
                     const args = cmd_line.substring(comp[0].length + 1)
                     await value.callback(results, args)
+                    return
                 }
             }
+
+            const err_msg = "unknown command " + cmd_line
+            add_command_response(results, err_msg)
         }
         else {
             // assume this is a chat request
@@ -397,14 +401,12 @@ async function main() {
         const urlParams = new URLSearchParams(search);
 
         const q = urlParams.get('q')
+        const c = urlParams.get("c")
 
         if (null != q) {
             await command_line_parser("/search " + q)
         }
-
-        const c = urlParams.get("c")
-
-        if (null != c) {
+        else if (null != c) {
             await command_line_parser("/chat " + c)
         }
     }

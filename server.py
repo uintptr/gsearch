@@ -286,6 +286,8 @@ class SearchAPI:
 
         location = None
 
+        q = q.rstrip()
+
         if q.startswith("a "):
             # amazon
             q = q[2:]

@@ -344,11 +344,15 @@ class SearchAPI:
             value = user_data[value_name]
 
             if value_name == "model":
-                self.chat.set_model(value)
+                ret_str = self.chat.set_model(value)
             elif value_name == "prompt":
-                self.chat.set_prompt(value)
+                ret_str = self.chat.set_prompt(value)
             else:
                 raise NotImplementedError(f"{value_name} not implemented")
+
+            resp.data = {
+                value_name: ret_str
+            }
 
             status = HTTPStatus.OK
 

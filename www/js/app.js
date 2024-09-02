@@ -221,6 +221,54 @@ async function command_chat(container, cmdline) {
  * @param {HTMLElement} container
  * @param {string} cmdline
 */
+async function command_model(container, cmdline) {
+
+    let res = null
+
+    if (null == cmdline || 0 == cmdline.length) {
+        res = await utils.fetch_as_json("/api/chat/model")
+    }
+    else {
+        const req = {
+            "model": cmdline
+        }
+        res = await utils.fetch_post_json("/api/chat/model", req)
+    }
+
+    if (res != null && "data" in res && "model" in res["data"]) {
+        add_command_response(container, "model: " + res.data.model)
+    }
+}
+
+
+/**
+ * @param {HTMLElement} container
+ * @param {string} cmdline
+*/
+async function command_prompt(container, cmdline) {
+
+    let res = null
+
+    if (null == cmdline || 0 == cmdline.length) {
+        res = await utils.fetch_as_json("/api/chat/prompt")
+    }
+    else {
+        const req = {
+            "prompt": cmdline
+        }
+        res = await utils.fetch_post_json("/api/chat/prompt", req)
+    }
+
+    if (res != null && "data" in res && "prompt" in res["data"]) {
+        add_command_response(container, "prompt: " + res.data.prompt)
+    }
+}
+
+
+/**
+ * @param {HTMLElement} container
+ * @param {string} cmdline
+*/
 async function command_reset(container, cmdline) {
     utils.remove_all_children(container)
     utils.hide_element(container)
@@ -246,6 +294,16 @@ const g_commands = {
     {
         "help": "Search using GCSE",
         "callback": command_search
+    },
+    "/model":
+    {
+        "help": "Get or set the chat model",
+        "callback": command_model
+    },
+    "/prompt":
+    {
+        "help": "Get or set the chat prompt",
+        "callback": command_prompt
     }
 }
 

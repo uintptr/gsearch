@@ -162,18 +162,18 @@ function add_command_response(container, response, markdown = false, chat_source
  * @param {string} cmdline
 */
 async function command_help(container, cmdline) {
-    let ret = "```\n"
 
-    ret += "commands:\n"
+
+    let table = "| | |  |\n"
+    table += "|:-----------|:---------|------|\n"
 
     for (const key in g_commands) {
-        const value = g_commands[key]["help"]
-        ret += `    ${key.padEnd(10)}${value}\n`
+        const item = g_commands[key]
+        table += `| \`${item.command}\` | \`${item.shortcut}\` | ${item.help} |\n`
     }
 
-    ret += "```"
 
-    add_command_response(container, ret, true)
+    add_command_response(container, table, true)
 }
 
 
@@ -277,33 +277,45 @@ async function command_reset(container, cmdline) {
 }
 
 const g_commands = {
-    "/help":
+    "help":
     {
+        "command": "/help",
+        "shortcut": "/h",
         "help": "This help",
         "callback": command_help
     },
-    "/chat":
+    "chat":
     {
+        "command": "/chat",
+        "shortcut": "/c",
         "help": "chat with the LLM and hope for the best ¯\\_(ツ)_/¯",
         "callback": command_chat
     },
-    "/reset":
+    "reset":
     {
+        "command": "/reset",
+        "shortcut": "/r",
         "help": "reset the output window",
         "callback": command_reset
     },
-    "/search":
+    "search":
     {
+        "command": "/search",
+        "shortcut": "/s",
         "help": "Search using GCSE",
         "callback": command_search
     },
-    "/model":
+    "model":
     {
+        "command": "/model",
+        "shortcut": "/m",
         "help": "Get or set the chat model",
         "callback": command_model
     },
-    "/prompt":
+    "prompt":
     {
+        "command": "/prompt",
+        "shortcut": "/p",
         "help": "Get or set the chat prompt",
         "callback": command_prompt
     }
@@ -324,15 +336,15 @@ async function command_line_parser(cmd_line) {
 
         if (true == cmd_line.startsWith("/")) {
 
-            const comp = cmd_line.split(/\s+/);
+            const cmd = cmd_line.split(/\s+/)[0]
 
             for (const key in g_commands) {
 
-                const value = g_commands[key]
+                const entry = g_commands[key]
 
-                if (key == comp[0]) {
-                    const args = cmd_line.substring(comp[0].length + 1)
-                    await value.callback(results, args)
+                if (entry.command == cmd || entry.shortcut == cmd) {
+                    const args = cmd_line.substring(cmd.length + 1)
+                    await entry.callback(results, args)
                     return
                 }
             }
@@ -415,3 +427,5 @@ async function main() {
 }
 
 await main()
+
+console.log(window)

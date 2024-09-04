@@ -164,7 +164,8 @@ function add_command_response(container, response, markdown = false, chat_source
 async function command_help(container, cmdline) {
 
 
-    let table = "| || |\n"
+    let table = "## Commands:\n"
+    table += "| || |\n"
     table += "|:--|:--|:-|\n"
 
     for (const key in g_commands) {

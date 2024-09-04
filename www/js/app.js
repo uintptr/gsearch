@@ -164,12 +164,12 @@ function add_command_response(container, response, markdown = false, chat_source
 async function command_help(container, cmdline) {
 
 
-    let table = "| | |  |\n"
-    table += "|:-----------|:---------|------|\n"
+    let table = "| || |\n"
+    table += "|:--|:--|:-|\n"
 
     for (const key in g_commands) {
         const item = g_commands[key]
-        table += `| \`${item.command}\` | \`${item.shortcut}\` | ${item.help} |\n`
+        table += `| \`${item.command}\` | \`${item.shortcut}\` | \`${item.help}\` |\n`
     }
 
     add_command_response(container, table, true)

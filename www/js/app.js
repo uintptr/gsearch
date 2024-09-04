@@ -38,17 +38,13 @@ function new_search_card(item, name) {
         // decomposed URL
         let components = url.pathname.split("/")
         components[0] = url.hostname
+
+        for (let i = 0; i < components.length; i++) {
+            components[i] = decodeURIComponent(components[i])
+        }
+
         let parts = components.join(" > ")
         utils.set_selector_text(result, "#url_parts", parts)
-
-
-        // favicon
-        let favicon = result.querySelector("#favicon")
-
-        if (favicon != null && favicon instanceof HTMLImageElement) {
-            let url_str = url.protocol + "//" + url.hostname + "/favicon.ico"
-            favicon.setAttribute("src", "/api/favicon?url=" + url_str)
-        }
 
         const body = result.querySelector("#result_text")
 
@@ -59,6 +55,8 @@ function new_search_card(item, name) {
 
     return result
 }
+
+
 
 
 /**
@@ -77,6 +75,8 @@ async function issue_query(container, q) {
 
             if (card != null && card instanceof HTMLElement) {
                 container.appendChild(card)
+                const item_b64 = utils.object_to_b64(item)
+                card.setAttribute("chat-data-b64", item_b64)
             }
         });
 
@@ -171,7 +171,6 @@ async function command_help(container, cmdline) {
         const item = g_commands[key]
         table += `| \`${item.command}\` | \`${item.shortcut}\` | ${item.help} |\n`
     }
-
 
     add_command_response(container, table, true)
 }
@@ -427,5 +426,3 @@ async function main() {
 }
 
 await main()
-
-console.log(window)

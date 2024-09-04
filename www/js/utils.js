@@ -117,3 +117,14 @@ export function isMobile() {
     const ua = navigator.userAgent;
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
 }
+
+/**
+* @param {Object} object
+* @returns {string}
+*/
+export function object_to_b64(object) {
+    const object_string = JSON.stringify(object);
+    const object_array = new TextEncoder().encode(object_string);
+    const item_encoded = btoa(String.fromCharCode(...object_array));
+    return item_encoded
+}

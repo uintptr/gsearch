@@ -220,7 +220,7 @@ class Bookmark:
     shortcut: str | None = None
 
 
-class GoogleRequestHandler:
+class GoogleCSE:
 
     def __init__(self, config: JSONConfig) -> None:
 
@@ -249,7 +249,7 @@ class SearchAPI:
         config_file = os.path.join(script_root, "config", "config.json")
         self.__config = JSONConfig(config_file)
 
-        self.gcse = GoogleRequestHandler(self.__config)
+        self.gcse = GoogleCSE(self.__config)
         self.chat = Chat(self.__config)
         self.reddit_cache = RedditCache(self.__config, self.chat)
 
@@ -257,12 +257,12 @@ class SearchAPI:
 
     def __get_lucky_url(self, gcse_data: bytes) -> str | None:
 
-        gcse = json.loads(gcse_data.decode("utf-8"))
+        gcse_dict = json.loads(gcse_data.decode("utf-8"))
 
-        if "items" not in gcse:
+        if "items" not in gcse_dict:
             return None
 
-        item = gcse["items"][0]
+        item = gcse_dict["items"][0]
 
         if "link" not in item:
             return None

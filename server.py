@@ -386,7 +386,7 @@ class SearchAPI:
             return web.Response(status=HTTPStatus.EXPECTATION_FAILED)
 
         # it's an iOS thing
-        q = req.rel_url.query["q"].replace(".", " ").rstrip()
+        q = req.rel_url.query["q"].replace(".", " ").strip()
 
         location = await self.__rdr(q)
 
@@ -406,7 +406,7 @@ class SearchAPI:
             return web.Response(status=HTTPStatus.EXPECTATION_FAILED)
 
         # it's an iOS thing
-        q = req.rel_url.query["q"].replace(".", " ").rstrip()
+        q = req.rel_url.query["q"].replace(".", " ").strip()
 
         # a real search
         data = await self.gcse.get(q)
@@ -473,7 +473,7 @@ class SearchAPI:
         if "name" not in req.rel_url.query:
             return web.Response(status=HTTPStatus.BAD_REQUEST)
 
-        name = req.rel_url.query["name"].rstrip()
+        name = req.rel_url.query["name"].strip()
 
         async with self.bookmarks_lock:
 

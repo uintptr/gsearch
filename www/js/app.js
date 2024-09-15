@@ -242,6 +242,28 @@ async function command_model(container, cmdline) {
     }
 }
 
+/**
+ * @param {HTMLElement} container
+ * @param {string} cmdline
+*/
+async function command_models(container, cmdline) {
+
+    let res = null
+
+    res = await utils.fetch_as_json("/api/chat/models")
+
+    if (null != res) {
+
+        let resp_md = "## Models\n"
+
+        for (let i = 0; i < res.length; i++) {
+            resp_md += " * " + res[i].id + "\n"
+        }
+
+        add_command_response(container, resp_md, true)
+    }
+}
+
 
 /**
  * @param {HTMLElement} container
@@ -311,6 +333,13 @@ const g_commands = {
         "shortcut": "/m",
         "help": "Get or set the chat model",
         "callback": command_model
+    },
+    "models":
+    {
+        "command": "/models",
+        "shortcut": "",
+        "help": "List available models",
+        "callback": command_models
     },
     "prompt":
     {

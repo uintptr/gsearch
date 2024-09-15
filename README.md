@@ -1,5 +1,4 @@
-# gsearch
-Google CSE Wrapper
+# gsearchGoogle CSE Wrapper
 
 ![image info](./documentation/dialog.jpg)
 

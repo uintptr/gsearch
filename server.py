@@ -98,6 +98,23 @@ class Chat:
     def __str__(self) -> str:
         return f"model={self.model} system={self.system}"
 
+    async def get_models(self) -> list[str]:
+
+        url = "https://api.openai.com/v1/models"
+
+        headers = {
+            "Authorization": f"Bearer {self.key}"
+        }
+
+        async with aiohttp.ClientSession() as s:
+            async with s.get(url, headers=headers) as r:
+                res_dict = json.loads(await r.read())
+
+                if "data" in res_dict:
+                    return res_dict["data"]
+
+        return []
+
     def get_model(self) -> str:
         return self.model
 
@@ -224,10 +241,10 @@ class GoogleCSE:
 
     def __init__(self, config: JSONConfig) -> None:
 
-        self.key = config.get("/google/key")
-        self.cx = config.get("/google/cx")
-        self.gl = config.get("/google/geo", "ca")
-        self.url = config.get("/google/url")
+        self.key = config.get_str("/google/key")
+        self.cx = config.get_str("/google/cx")
+        self.gl = config.get_str("/google/geo", "ca")
+        self.url = config.get_str("/google/url")
 
     async def get(self, q: str) -> bytes:
 
@@ -526,6 +543,10 @@ class SearchAPI:
         resp.data = {"model": self.chat.get_model()}
         return web.json_response(asdict(resp))
 
+    async def api_chat_models(self, req: web.Request) -> web.Response:
+        models = await self.chat.get_models()
+        return web.json_response(models)
+
     async def api_chat_model_set(self, req: web.Request) -> web.Response:
 
         status, resp = await self.__chat_set(req, "model")
@@ -563,6 +584,7 @@ def run_server(addr: str, port: int) -> None:
         # chat
         web.post("/api/chat", handler.api_chat),
         web.get("/api/chat/model", handler.api_chat_model_get),
+        web.get("/api/chat/models", handler.api_chat_models),
         web.post("/api/chat/model", handler.api_chat_model_set),
         web.get("/api/chat/prompt", handler.api_chat_prompt_get),
         web.post("/api/chat/prompt", handler.api_chat_prompt_set),

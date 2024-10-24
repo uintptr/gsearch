@@ -318,7 +318,7 @@ class SearchAPI:
         elif q.startswith("g "):
             # google
             q = q[2:]
-            location = f"https://google.com/search?q={q}"
+            location = f"https://google.com/search?q={q}&udm=14"
         elif q.startswith("i "):
             # google images
             q = q[2:]
